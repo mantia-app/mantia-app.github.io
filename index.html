@@ -1,0 +1,557 @@
+<title>Mantia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Concepto: consola de operaciones sobria. Barra lateral de módulos + área de trabajo densa.
+   Acento único azul petróleo; estados con color semántico aparte. */
+:root{
+  --font-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --bg:#f3f5f6; --surface:#ffffff; --surface-2:#eceff1; --line:#dbe0e4; --line-strong:#c4cbd1;
+  --fg:#14191d; --muted:#5a6670; --accent:#1b5f7c; --accent-fg:#ffffff; --accent-soft:#e1eef4;
+  --ok:#1d7a4b; --ok-soft:#e0f1e8; --warn:#8f5f00; --warn-soft:#f8ecd0; --bad:#b3261e; --bad-soft:#f9e1de;
+  --info:#375a9e; --info-soft:#e3e9f6; --shadow:0 12px 40px rgba(16,24,32,.16);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1215; --surface:#151a1e; --surface-2:#1c2328; --line:#283138; --line-strong:#38444d;
+    --fg:#e7ecef; --muted:#93a0aa; --accent:#62b4d4; --accent-fg:#06222d; --accent-soft:#17303b;
+    --ok:#5cc690; --ok-soft:#14301f; --warn:#e0b04c; --warn-soft:#33290f; --bad:#f08b83; --bad-soft:#38191a;
+    --info:#8fb0ee; --info-soft:#1b2640; --shadow:0 12px 40px rgba(0,0,0,.5); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1215; --surface:#151a1e; --surface-2:#1c2328; --line:#283138; --line-strong:#38444d;
+  --fg:#e7ecef; --muted:#93a0aa; --accent:#62b4d4; --accent-fg:#06222d; --accent-soft:#17303b;
+  --ok:#5cc690; --ok-soft:#14301f; --warn:#e0b04c; --warn-soft:#33290f; --bad:#f08b83; --bad-soft:#38191a;
+  --info:#8fb0ee; --info-soft:#1b2640; --shadow:0 12px 40px rgba(0,0,0,.5); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:14px;line-height:1.45;
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;max-width:1360px;margin:0 auto;align-items:start}
+.side{position:sticky;top:16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 4px}
+.brand svg{width:30px;height:30px;flex:none}
+.brand b{font-size:17px;letter-spacing:-.01em}
+.brand small{display:block;color:var(--muted);font-size:11px;margin-top:-2px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav h6{margin:10px 6px 4px;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:8px 10px;color:var(--muted)}
+.nav button svg{width:16px;height:16px;flex:none}
+.nav button:hover{background:var(--surface-2);color:var(--fg)}
+.nav button[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav button[disabled]{opacity:.55;cursor:default}
+.nav button[disabled]:hover{background:none;color:var(--muted)}
+.tag{margin-left:auto;font-size:10px;border:1px solid var(--line-strong);border-radius:999px;padding:0 6px;color:var(--muted)}
+.demo-note{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.main{min-width:0;display:flex;flex-direction:column;gap:16px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between}
+.top h1{font-size:22px;letter-spacing:-.015em;margin:0;font-weight:600}
+.top p{margin:2px 0 0;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-strong);background:var(--surface);border-radius:8px;padding:7px 12px;font-weight:500;text-decoration:none;color:var(--fg)}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn.ok{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.btn.bad{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.inp{width:100%;border:1px solid var(--line-strong);background:var(--surface);border-radius:8px;padding:8px 10px}
+textarea.inp{min-height:84px;resize:vertical}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.card h2{font-size:13px;margin:0 0 12px;font-weight:600;color:var(--muted);letter-spacing:.01em}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.two{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
+.kpi b{display:block;font-size:28px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;font-weight:600}
+.kpi span{color:var(--muted);font-size:12.5px}
+.kpi small{display:block;margin-top:6px;font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:500;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.c-abierto{background:var(--info-soft);color:var(--info)}
+.c-espera{background:var(--warn-soft);color:var(--warn)}
+.c-ejecucion{background:var(--accent-soft);color:var(--accent)}
+.c-cerrado{background:var(--ok-soft);color:var(--ok)}
+.c-noprocede{background:var(--surface-2);color:var(--muted)}
+.c-vencido{background:var(--bad-soft);color:var(--bad)}
+.c-alto{color:var(--bad)} .c-medio{color:var(--warn)} .c-bajo{color:var(--muted)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap;font-weight:600}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr.row{cursor:pointer}
+tbody tr.row:hover td{background:var(--surface-2)}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+td.mono{white-space:nowrap}
+.muted{color:var(--muted)}
+.trunc{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.filters .inp{width:auto;min-width:150px}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg button{background:var(--surface);border:0;padding:6px 12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.board{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--surface-2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+.col h3{margin:0 0 2px;font-size:12px;display:flex;justify-content:space-between;color:var(--muted);font-weight:600}
+.tk{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:left;width:100%}
+.tk:hover{border-color:var(--line-strong)}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;font-size:13px}
+.bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.stack{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface-2)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+.feed{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.feed li{display:grid;grid-template-columns:auto 1fr;gap:10px;font-size:13px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:6px}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,14,18,.45);z-index:30}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);border-left:1px solid var(--line);z-index:31;overflow-y:auto;box-shadow:var(--shadow);padding:18px max(18px,env(safe-area-inset-right,0px)) 28px 18px;display:flex;flex-direction:column;gap:16px}
+.drawer header{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.drawer h2{margin:4px 0 0;font-size:19px;letter-spacing:-.01em;font-weight:600}
+.meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sec{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.sec h4{margin:0;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tl{margin:0;padding:0 0 0 14px;list-style:none;border-left:1px solid var(--line-strong);display:flex;flex-direction:column;gap:12px}
+.tl li{position:relative;font-size:13px}
+.tl li::before{content:"";position:absolute;left:-19px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.photo{height:110px;border:1px dashed var(--line-strong);border-radius:10px;display:grid;place-items:center;color:var(--muted);background:repeating-linear-gradient(135deg,transparent 0 10px,var(--surface-2) 10px 11px)}
+.modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;background:rgba(10,14,18,.5)}
+.modal .box{background:var(--surface);border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px}
+.mail{border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+.mail .h{background:var(--surface-2);padding:10px 12px;display:grid;gap:2px;color:var(--muted)}
+.mail .b{padding:14px 12px;display:flex;flex-direction:column;gap:8px}
+.wa{background:var(--ok-soft);border-radius:10px;padding:12px;white-space:pre-wrap;font-size:13px}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;z-index:50;font-size:13px}
+.portal{max-width:640px;margin:0 auto;width:100%}
+.chain{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:stretch}
+.node{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--surface);display:flex;flex-direction:column;gap:6px;position:relative}
+.node b{font-size:14px}
+.node small{color:var(--muted)}
+.node.live{border-color:var(--accent);background:var(--accent-soft)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:minmax(0,1fr)}.chain{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;flex-direction:row;align-items:center;overflow-x:auto;padding:10px;gap:10px}
+  .side .nav{flex-direction:row}
+  .side .nav h6,.demo-note{display:none}
+  .nav button{white-space:nowrap;width:auto}
+  .tag{display:none}
+  .brand small{display:none}
+  .meta{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}}
+.notice{border:1px solid var(--line-strong);background:var(--accent-soft);color:var(--fg);border-radius:10px;padding:10px 14px;font-size:13px}
+.yes{color:var(--ok);font-weight:600}.no{color:var(--muted)}
+.mx th:not(:first-child),.mx td:not(:first-child){text-align:center}
+select:disabled,input:disabled,input[readonly]{opacity:.65;cursor:not-allowed}
+.hint{font-size:12px;color:var(--muted)}
+</style>
+
+<div class="shell">
+  <aside class="side">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M8 23V13l8 7 8-7v10" stroke="var(--accent-fg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.1" fill="var(--accent-fg)"/></svg>
+      <div><b>Mantia</b><small>Gestión de operaciones</small></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Módulos"></nav>
+    <div class="demo-note">Demo con datos ficticios. Lo que cambies aquí queda solo en tu navegador.</div>
+  </aside>
+  <div class="main">
+    <div class="top">
+      <div><h1 id="h1"></h1><p id="sub"></p></div>
+      <div class="tools" id="tools"></div>
+    </div>
+    <div id="notice"></div>
+    <main id="view"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+"use strict";
+const DAY=864e5, NOW=Date.now();
+const ESTADOS=["Abierto","En espera","En ejecución","Cerrado","No procede"];
+const ECLASS={"Abierto":"c-abierto","En espera":"c-espera","En ejecución":"c-ejecucion","Cerrado":"c-cerrado","No procede":"c-noprocede"};
+const ECOLOR={"Abierto":"var(--info)","En espera":"var(--warn)","En ejecución":"var(--accent)","Cerrado":"var(--ok)","No procede":"var(--line-strong)"};
+const SLA={"Alto":2,"Medio":5,"Bajo":10};
+const TIPOS=["Mantenimiento","Materiales","Avisos"];
+const PUNTOS=[
+ {id:"p1",n:"Edificio Alameda",c:"Bogotá"},{id:"p2",n:"Parqueadero Calle 93",c:"Bogotá"},
+ {id:"p3",n:"Clínica Los Cedros",c:"Bogotá"},{id:"p4",n:"Centro Comercial Terraza",c:"Medellín"},
+ {id:"p5",n:"Torre Norte",c:"Bogotá"},{id:"p6",n:"Conjunto Las Acacias",c:"Cali"},
+ {id:"p7",n:"Bodega Fontibón",c:"Bogotá"},{id:"p8",n:"Colegio San Rafael",c:"Bogotá"}];
+const GESTORES=["Camila Ortiz","Julián Pardo","Sin asignar"];
+const ROLE_DEF={
+ "Administrador":{l:"Administrador",d:"Configura la herramienta y gestiona usuarios",can:["ver","crear","estado","prioridad","asignar","aprobar","materiales","comentar","usuarios"]},
+ "Gerente":{l:"Gerente de zona",d:"Supervisa su zona y aprueba solicitudes",can:["ver","crear","estado","prioridad","asignar","aprobar","comentar"]},
+ "Gestor":{l:"Gestor de mantenimiento",d:"Atiende tickets y registra materiales",can:["ver","crear","estado","materiales","comentar"]},
+ "Consulta":{l:"Consulta (solo lectura)",d:"Ve los tickets y tableros de sus puntos; no modifica nada",can:["ver"]},
+ "Solicitante":{l:"Solicitante",d:"Reporta novedades y sigue sus propios tickets",can:["crear","propios"]}};
+const ACCIONES=[["ver","Ver tickets y tableros de su alcance"],["propios","Seguir sus propios tickets"],["crear","Reportar novedades"],["estado","Cambiar el estado de un ticket"],["prioridad","Cambiar la prioridad"],["asignar","Asignar responsable"],["aprobar","Aprobar o rechazar materiales"],["materiales","Registrar materiales usados"],["comentar","Comentar en tickets"],["usuarios","Gestionar usuarios y permisos"]];
+const USERS0=[
+ {id:"u1",n:"Andrea Salazar",e:"andrea.salazar@cliente.example",rol:"Administrador",pts:"all",est:"Activo",acc:"hoy"},
+ {id:"u2",n:"Camilo Herrera",e:"camilo.herrera@cliente.example",rol:"Gerente",pts:["p1","p2","p3","p5","p7","p8"],est:"Activo",acc:"ayer"},
+ {id:"u3",n:"Camila Ortiz",e:"camila.ortiz@cliente.example",rol:"Gestor",pts:"all",est:"Activo",acc:"hoy"},
+ {id:"u4",n:"Julián Pardo",e:"julian.pardo@cliente.example",rol:"Gestor",pts:"all",est:"Activo",acc:"hace 2 d"},
+ {id:"u5",n:"Mariana Posada",e:"mposada@clinicacedros.example",rol:"Consulta",pts:["p3"],est:"Activo",acc:"hace 3 d"},
+ {id:"u6",n:"Laura Mejía",e:"laura.mejia@clinicacedros.example",rol:"Solicitante",pts:["p3"],est:"Activo",acc:"ayer"},
+ {id:"u7",n:"Sergio Vélez",e:"sergio.velez@edificioalameda.example",rol:"Solicitante",pts:["p1"],est:"Inactivo",acc:"hace 40 d"}];
+const INV0=[
+ {id:"i1",n:"Chapa de seguridad",u:"und",s:12,min:4,p:68000},{id:"i2",n:"Bombillo LED 18 W",u:"und",s:40,min:15,p:9500},
+ {id:"i3",n:"Cono de señalización",u:"und",s:6,min:10,p:24000},{id:"i4",n:"Pintura de tráfico",u:"gal",s:9,min:5,p:96000},
+ {id:"i5",n:"Candado 50 mm",u:"und",s:18,min:6,p:21000},{id:"i6",n:"Cable encauchetado 3x14",u:"m",s:120,min:50,p:7800}];
+// [díasAtrás, punto, tipo, novedad, detalle, prioridad, estado, solicitante, responsable, aprobación, foto, materiales[[inv,cant]]]
+const SEED=[
+ [1,"p3","Mantenimiento","Filtración en baño de visitantes","Gotea desde el techo hacia el lavamanos; el piso queda mojado.","Alto","Abierto","Laura Mejía","Camila Ortiz",null,true,[]],
+ [2,"p2","Mantenimiento","Reflectores externos sin funcionar","Tres reflectores del costado norte no encienden desde el fin de semana.","Alto","En ejecución","Andrés Ruiz","Camila Ortiz",null,true,[["i2",3]]],
+ [3,"p5","Materiales","Reposición de conos","Se perdieron 6 conos en la salida vehicular.","Medio","Abierto","Paola Duque","Julián Pardo","Pendiente",false,[]],
+ [4,"p1","Avisos","Aviso de tarifas deteriorado","El aviso de la entrada está despintado y no se lee.","Bajo","En espera","Sergio Vélez","Julián Pardo",null,true,[]],
+ [5,"p7","Mantenimiento","Portón corredizo se atasca","Hay que lubricar rieles y revisar rodamientos.","Medio","Abierto","Marta Cifuentes","Sin asignar",null,false,[]],
+ [6,"p4","Materiales","Candados para reja principal","Cambio de candados por cambio de administrador.","Medio","Cerrado","Iván Rojas","Julián Pardo","Aprobado",false,[["i5",2]]],
+ [7,"p6","Mantenimiento","Humedad en muro del cuarto de basuras","Aparece moho en el muro compartido con la zona de lavado.","Bajo","En espera","Natalia Gil","Camila Ortiz",null,true,[]],
+ [8,"p3","Mantenimiento","Cambio de chapa en oficina","La chapa de la oficina administrativa no cierra bien.","Medio","Cerrado","Laura Mejía","Camila Ortiz",null,true,[["i1",1]]],
+ [9,"p8","Mantenimiento","Demarcación de celdas de motos","Se requiere pintar 25 celdas nuevas.","Medio","En ejecución","Rector (portería)","Camila Ortiz",null,false,[["i4",2]]],
+ [11,"p2","Materiales","Cable para cámaras","Extensión de línea hacia dos cámaras nuevas.","Bajo","Cerrado","Andrés Ruiz","Julián Pardo","Aprobado",false,[["i6",30]]],
+ [13,"p5","Mantenimiento","Puerta de acceso se golpea","El cierre automático quedó descalibrado.","Alto","Cerrado","Paola Duque","Camila Ortiz",null,true,[]],
+ [15,"p1","Mantenimiento","Bombillos fundidos en sótano 2","Seis luminarias fuera de servicio.","Medio","Cerrado","Sergio Vélez","Camila Ortiz",null,false,[["i2",6]]],
+ [19,"p4","Avisos","Señalización de salida","Instalar flecha de salida en el nivel 1.","Bajo","No procede","Iván Rojas","Julián Pardo",null,false,[]],
+ [24,"p7","Mantenimiento","Fuga en tubería del patio","Charco permanente junto al bordillo.","Alto","Cerrado","Marta Cifuentes","Camila Ortiz",null,true,[]],
+ [29,"p6","Materiales","Candados y cadenas","Reposición mensual de kit de seguridad.","Bajo","Cerrado","Natalia Gil","Julián Pardo","Aprobado",false,[["i5",3]]],
+ [34,"p8","Mantenimiento","Reparación de reja perimetral","Dos tramos oxidados, riesgo para menores.","Alto","Cerrado","Rector (portería)","Camila Ortiz",null,true,[]],
+ [41,"p3","Mantenimiento","Aviso luminoso intermitente","Parpadea de noche, molesta a vecinos.","Medio","Cerrado","Laura Mejía","Camila Ortiz",null,false,[]],
+ [48,"p2","Materiales","Pintura para topellantas","Dos galones amarillo tráfico.","Bajo","Cerrado","Andrés Ruiz","Julián Pardo","Aprobado",false,[["i4",2]]]
+];
+let S;
+const KEY="mantia-demo-v2";
+function pcost(inv,list){return list.reduce((a,m)=>a+m.q*inv.find(x=>x.id===m.i).p,0)}
+function seed(){
+  const inv=JSON.parse(JSON.stringify(INV0));
+  const tickets=SEED.map((r,k)=>{
+    const created=NOW-r[0]*DAY-((k*37)%9)*36e5;
+    const mats=r[11].map(([i,q])=>({i,q}));
+    const hist=[{t:created,who:r[7],x:"Reportó la novedad desde el portal"}];
+    if(r[8]!=="Sin asignar")hist.push({t:created+36e5*2,who:"Sistema",x:"Asignado a "+r[8]});
+    if(r[9]==="Aprobado")hist.push({t:created+36e5*20,who:"Gerente de zona",x:"Aprobó la solicitud de materiales"});
+    if(r[6]!=="Abierto")hist.push({t:created+DAY*Math.min(r[0]-0.2,2),who:r[8]==="Sin asignar"?"Sistema":r[8],x:"Cambió el estado a "+r[6]});
+    return {id:"TK-"+(101+k),created,punto:r[1],tipo:r[2],nov:r[3],det:r[4],pri:r[5],est:r[6],sol:r[7],resp:r[8],apr:r[9],foto:r[10],mats,hist:hist.sort((a,b)=>b.t-a.t),
+      closed:r[6]==="Cerrado"?created+Math.min(r[0]*DAY*0.7,DAY*6):null};
+  }).sort((a,b)=>b.created-a.created);
+  return {tickets,inv,mov:[],next:101+SEED.length,view:"resumen",users:JSON.parse(JSON.stringify(USERS0)),me:"u1",audit:[],f:{e:"todos",t:"todos",q:""},mode:"tabla",sel:null};
+}
+function load(){try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users)return o}}catch(e){}return seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+S=load(); S.sel=null;
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cop=n=>"$"+Math.round(n).toLocaleString("es-CO");
+const pt=id=>PUNTOS.find(p=>p.id===id);
+const me=()=>S.users.find(u=>u.id===S.me)||S.users[0];
+const can=a=>ROLE_DEF[me().rol].can.includes(a);
+const dis=a=>can(a)?"":'disabled title="Tu rol no permite este cambio"';
+const meName=()=>me().n;
+const inScope=(u,id)=>u.pts==="all"||u.pts.includes(id);
+const vis=()=>{const u=me();return u.rol==="Solicitante"?S.tickets.filter(t=>t.sol===u.n):S.tickets.filter(t=>inScope(u,t.punto))};
+const ptsVis=()=>{const u=me();return PUNTOS.filter(p=>inScope(u,p.id))};
+const alcance=u=>u.pts==="all"?"Todos los puntos":u.pts.map(id=>pt(id).n).join(", ");
+const logA=x=>{S.audit.unshift({t:Date.now(),x})};
+function views(){const r=me().rol;if(r==="Solicitante")return["portal","tickets"];
+  const v=["resumen","tickets"];if(can("crear"))v.push("portal");v.push("puntos","inv","eco");if(can("usuarios"))v.push("usuarios");return v}
+const ago=t=>{const d=(NOW-t)/DAY;return d<1?"hoy":d<2?"ayer":"hace "+Math.floor(d)+" d"};
+const fdate=t=>new Date(t).toLocaleDateString("es-CO",{day:"2-digit",month:"short"});
+const ftime=t=>new Date(t).toLocaleString("es-CO",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+const isOpen=t=>t.est!=="Cerrado"&&t.est!=="No procede";
+const overdue=t=>isOpen(t)&&(NOW-t.created)/DAY>SLA[t.pri];
+const cost=t=>pcost(S.inv,t.mats);
+const chipE=e=>`<span class="chip ${ECLASS[e]}">${esc(e)}</span>`;
+const chipS=t=>overdue(t)?`<span class="chip c-vencido">Vencido</span>`:"";
+const priC=p=>`<span class="c-${p.toLowerCase()}">${p}</span>`;
+function toast(m){const e=document.createElement("div");e.className="toast";e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),2400)}
+async function copy(txt){try{await navigator.clipboard.writeText(txt);toast("Copiado")}catch(e){toast("No se pudo copiar; selecciónalo manualmente")}}
+const IC={
+ resumen:'<path d="M3 3h6v6H3zM11 3h6v4h-6zM11 9h6v8h-6zM3 11h6v6H3z"/>',
+ tickets:'<path d="M3 6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2a2 2 0 0 0 0 4v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2 2 0 0 0 0-4z"/>',
+ portal:'<path d="M4 3h12v14H4zM7 7h6M7 10h6M7 13h3"/>',
+ puntos:'<path d="M10 18s6-5.2 6-9.5A6 6 0 0 0 4 8.5C4 12.8 10 18 10 18z"/><circle cx="10" cy="8.5" r="2"/>',
+ eco:'<circle cx="4" cy="10" r="2"/><circle cx="16" cy="4" r="2"/><circle cx="16" cy="16" r="2"/><path d="M6 10h4l4-5M10 10l4 5"/>',
+ inv:'<path d="M3 7l7-4 7 4v7l-7 4-7-4zM3 7l7 4 7-4M10 11v7"/>',
+ inf:'<path d="M5 3h8l3 3v11H5zM8 9h5M8 12h5M8 15h3"/>',
+ sal:'<path d="M3 5h10v10H3zM13 8h3l1 3v4h-4M6 17a1.5 1.5 0 1 0 0 .01M14 17a1.5 1.5 0 1 0 0 .01"/>'};
+IC.usr='<circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5M14 4a3 3 0 0 1 0 6M16 12c1.5.6 2 2 2 3"/>';
+const ico=k=>`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
+const TITLES={resumen:["Resumen","Estado de la operación en tiempo real"],tickets:["Tickets","Todas las solicitudes, con su estado y tiempos"],portal:["Reportar una novedad","Así lo ve quien reporta: sin usuario, desde el celular"],puntos:["Puntos de servicio","Cada punto tiene su propio enlace de reporte y su historial"],inv:["Inventario","Vista previa: el material usado en un ticket descuenta aquí"],eco:["Cómo se conecta","Un solo registro de punta a punta"],usuarios:["Usuarios y permisos","Quién entra, qué ve y qué puede cambiar"]};
+
+function renderNav(){
+  const ok=views(),ext=me().rol==="Solicitante";
+  const item=(k,l)=>ok.includes(k)?`<button data-v="${k}" ${S.view===k?'aria-current="page"':""}>${ico(k)}${k==="tickets"&&ext?"Mis tickets":l}</button>`:"";
+  const soon=(k,l)=>`<button disabled>${ico(k)}${l}<span class="tag">Próximo</span></button>`;
+  let n=`<h6>Operación</h6>`+item("resumen","Resumen")+item("tickets","Tickets")+item("portal","Reportar novedad")+item("puntos","Puntos de servicio");
+  if(!ext)n+=`<h6>Módulos</h6>`+item("inv","Inventario")+soon("inf","Informes")+soon("sal","Salidas de material")+item("eco","Cómo se conecta")+
+    `<h6>Administración</h6>`+(ok.includes("usuarios")?item("usuarios","Usuarios y permisos"):`<button disabled>${ico("usr")}Usuarios y permisos<span class="tag">Admin</span></button>`);
+  $("#nav").innerHTML=n;
+  $("#nav").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>{S.view=b.dataset.v;S.sel=null;render()});
+}
+function renderTools(){
+  const act=S.users.filter(u=>u.est!=="Inactivo");
+  $("#tools").innerHTML=`<div class="field" style="flex-direction:row;align-items:center;gap:8px"><label for="who">Ver como</label>
+   <select id="who" class="inp" style="width:auto;max-width:270px">${act.map(u=>`<option value="${u.id}" ${S.me===u.id?"selected":""}>${esc(u.n)} · ${ROLE_DEF[u.rol].l}</option>`).join("")}</select></div>
+   ${S.view==="usuarios"?'<button class="btn primary" id="inv">Invitar usuario</button>':""}
+   <button class="btn" id="theme" aria-label="Cambiar tema claro u oscuro">Tema</button>
+   <button class="btn" id="reset">Restablecer demo</button>`;
+  $("#who").onchange=e=>{S.me=e.target.value;S.sel=null;if(!views().includes(S.view))S.view=views()[0];save();render()};
+  if($("#inv"))$("#inv").onclick=modalInvite;
+  $("#theme").onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark"};
+  $("#reset").onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}const v=S.view;S=seed();S.view=v;render();toast("Demo restablecido")};
+}
+function render(){
+  if(!views().includes(S.view))S.view=views()[0];
+  renderNav();renderTools();
+  const r=me().rol;let [t,s]=TITLES[S.view];
+  if(r==="Solicitante"&&S.view==="tickets"){t="Mis tickets";s="Los reportes que has enviado y cómo van"}
+  $("#h1").textContent=t;$("#sub").textContent=s;
+  $("#notice").innerHTML=r==="Consulta"?`<div class="notice">Tu rol es de <b>solo lectura</b>: puedes consultar los tickets de tus puntos, pero no modificar nada.</div>`:
+    r==="Solicitante"?`<div class="notice">Puedes reportar novedades y ver el avance de <b>tus</b> tickets. No ves el resto de la operación.</div>`:"";
+  ({resumen:vResumen,tickets:vTickets,portal:vPortal,puntos:vPuntos,inv:vInv,eco:vEco,usuarios:vUsuarios})[S.view]();
+  renderLayer();
+}
+
+/* ---------- Resumen ---------- */
+function vResumen(){
+  const T=vis(), abiertos=T.filter(isOpen), venc=abiertos.filter(overdue);
+  const cerr=T.filter(t=>t.closed);
+  const prom=cerr.length?cerr.reduce((a,t)=>a+(t.closed-t.created),0)/cerr.length/DAY:0;
+  const pend=T.filter(t=>t.apr==="Pendiente").length;
+  const cnt=ESTADOS.map(e=>T.filter(t=>t.est===e).length);
+  const weeks=[...Array(8)].map((_,i)=>{const a=NOW-(7-i+1)*7*DAY,b=NOW-(7-i)*7*DAY;return T.filter(t=>t.created>a&&t.created<=b).length});
+  const wmax=Math.max(4,...weeks);
+  const bars=weeks.map((n,i)=>{const h=Math.round(n/wmax*110),x=34+i*54;
+    return `<rect x="${x}" y="${130-h}" width="34" height="${h}" rx="4" fill="var(--accent)" opacity="${i===7?1:.55}"/><text x="${x+17}" y="${123-h}" text-anchor="middle" font-size="11" fill="var(--fg)" font-family="var(--font-mono)">${n}</text><text x="${x+17}" y="148" text-anchor="middle" font-size="10.5" fill="var(--muted)">${i===7?"Esta sem.":"-"+(7-i)+" sem"}</text>`}).join("");
+  const byP=ptsVis().map(p=>({p,c:T.filter(t=>t.punto===p.id).reduce((a,t)=>a+cost(t),0),n:T.filter(t=>t.punto===p.id).length})).sort((a,b)=>b.c-a.c).slice(0,5);
+  const cmax=Math.max(1,...byP.map(r=>r.c));
+  const act=T.flatMap(t=>t.hist.map(h=>({...h,id:t.id}))).sort((a,b)=>b.t-a.t).slice(0,6);
+  $("#view").innerHTML=`<div class="grid">
+   <div class="grid kpis">
+    <div class="card kpi"><span>Tickets abiertos</span><b>${abiertos.length}</b><small class="muted">${T.length} en total</small></div>
+    <div class="card kpi"><span>Fuera de plazo</span><b style="color:${venc.length?"var(--bad)":"inherit"}">${venc.length}</b><small class="muted">según prioridad (2 / 5 / 10 días)</small></div>
+    <div class="card kpi"><span>Cierre promedio</span><b>${prom.toFixed(1)} d</b><small class="muted">${cerr.length} tickets cerrados</small></div>
+    <div class="card kpi"><span>Por aprobar</span><b>${pend}</b><small class="muted">solicitudes de materiales</small></div>
+   </div>
+   <div class="grid two">
+    <div class="card"><h2>Tickets nuevos por semana</h2>
+     <svg viewBox="0 0 480 156" width="100%" role="img" aria-label="Tickets nuevos por semana, últimas 8 semanas"><line x1="26" y1="130" x2="470" y2="130" stroke="var(--line-strong)"/>${bars}</svg></div>
+    <div class="card"><h2>Estado actual</h2>
+     <div class="stack">${ESTADOS.map((e,i)=>`<i style="width:${cnt[i]/Math.max(1,T.length)*100}%;background:${ECOLOR[e]}"></i>`).join("")}</div>
+     <div class="legend">${ESTADOS.map((e,i)=>`<span><i style="background:${ECOLOR[e]}"></i>${e} · ${cnt[i]}</span>`).join("")}</div>
+     <h2 style="margin-top:22px">Costo de materiales por punto</h2>
+     <div class="bars">${byP.map(r=>`<div class="bar-row"><span>${esc(r.p.n)}</span><span class="mono">${cop(r.c)}</span><div class="bar"><i style="width:${r.c/cmax*100}%"></i></div></div>`).join("")}</div>
+    </div>
+   </div>
+   <div class="card"><h2>Actividad reciente</h2><ul class="feed">${act.map(a=>`<li><span class="dot"></span><div><b class="mono">${a.id}</b> ${esc(a.x)}<div class="muted" style="font-size:12px">${esc(a.who)} · ${ftime(a.t)}</div></div></li>`).join("")}</ul></div>
+  </div>`;
+}
+
+/* ---------- Tickets ---------- */
+function filtered(){
+  const q=S.f.q.trim().toLowerCase();
+  return vis().filter(t=>(S.f.e==="todos"||(S.f.e==="vencidos"?overdue(t):t.est===S.f.e))&&(S.f.t==="todos"||t.tipo===S.f.t)&&
+   (!q||(t.id+t.nov+t.det+pt(t.punto).n+t.sol).toLowerCase().includes(q)));
+}
+function vTickets(){
+  $("#view").innerHTML=`<div class="grid">
+   <div class="top"><div class="filters">
+     <input class="inp" id="q" type="search" placeholder="Buscar ticket, punto o solicitante" value="${esc(S.f.q)}" aria-label="Buscar">
+     <select class="inp" id="fe" aria-label="Estado"><option value="todos">Todos los estados</option><option value="vencidos" ${S.f.e==="vencidos"?"selected":""}>Fuera de plazo</option>${ESTADOS.map(e=>`<option ${S.f.e===e?"selected":""}>${e}</option>`).join("")}</select>
+     <select class="inp" id="ft" aria-label="Tipo"><option value="todos">Todos los tipos</option>${TIPOS.map(e=>`<option ${S.f.t===e?"selected":""}>${e}</option>`).join("")}</select></div>
+     <div class="seg" role="group" aria-label="Vista"><button data-m="tabla" aria-pressed="${S.mode==="tabla"}">Tabla</button><button data-m="tablero" aria-pressed="${S.mode==="tablero"}">Tablero</button></div></div>
+   <div id="list"></div></div>`;
+  $("#q").oninput=e=>{S.f.q=e.target.value;list()};
+  $("#fe").onchange=e=>{S.f.e=e.target.value;list()};$("#ft").onchange=e=>{S.f.t=e.target.value;list()};
+  document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{S.mode=b.dataset.m;vTickets()});
+  list();
+}
+function list(){
+  const L=filtered();
+  if(!L.length){$("#list").innerHTML=`<div class="card empty">Ningún ticket coincide con los filtros.</div>`;return}
+  if(S.mode==="tabla"){
+   $("#list").innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Ticket</th><th>Punto</th><th>Novedad</th><th>Tipo</th><th>Prior.</th><th>Estado</th><th>Responsable</th><th>Antigüedad</th></tr></thead><tbody>${L.map(t=>`
+    <tr class="row" data-id="${t.id}" tabindex="0"><td class="mono">${t.id}</td><td>${esc(pt(t.punto).n)}</td><td class="trunc">${esc(t.nov)}</td><td>${t.tipo}</td><td>${priC(t.pri)}</td>
+    <td>${chipE(t.est)} ${chipS(t)}</td><td>${esc(t.resp)}</td><td class="muted">${ago(t.created)}</td></tr>`).join("")}</tbody></table></div>`;
+   document.querySelectorAll("tr.row").forEach(r=>{r.onclick=()=>open(r.dataset.id);r.onkeydown=e=>{if(e.key==="Enter")open(r.dataset.id)}});
+  }else{
+   $("#list").innerHTML=`<div class="board">${ESTADOS.map(e=>{const c=L.filter(t=>t.est===e);return `<div class="col"><h3><span>${e}</span><span>${c.length}</span></h3>${c.map(t=>`
+     <button class="tk" data-id="${t.id}"><span class="mono muted">${t.id} · ${ago(t.created)}</span><b style="font-weight:600">${esc(t.nov)}</b><span class="muted">${esc(pt(t.punto).n)}</span><span>${priC(t.pri)} ${chipS(t)}</span></button>`).join("")}</div>`}).join("")}</div>`;
+   document.querySelectorAll(".tk").forEach(r=>r.onclick=()=>open(r.dataset.id));
+  }
+}
+function open(id){S.sel=id;renderLayer()}
+function addHist(t,x,who){t.hist.unshift({t:Date.now(),who:who||meName(),x})}
+function trackLink(t){return "https://mantia.example/seguimiento/"+t.id.toLowerCase()}
+function waText(t){return `🎫 Ticket ${t.id}\n📍 ${pt(t.punto).n}\n🔧 ${t.tipo}\n📝 ${t.nov}\n📌 Estado: ${t.est}\nSeguimiento: ${trackLink(t)}`}
+function renderLayer(){
+  const L=$("#layer");const t=S.tickets.find(x=>x.id===S.sel);const ext=me().rol==="Solicitante";
+  if(!t){L.innerHTML="";return}
+  const mats=t.mats.map(m=>{const it=S.inv.find(x=>x.id===m.i);return {...m,it}});
+  L.innerHTML=`<div class="scrim" id="scrim"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-label="Detalle del ticket ${t.id}">
+   <header><div><span class="mono muted">${t.id} · ${t.tipo}</span><h2>${esc(t.nov)}</h2><div class="muted" style="margin-top:4px">${esc(pt(t.punto).n)} · ${esc(pt(t.punto).c)}</div></div><button class="btn sm" id="x" aria-label="Cerrar">Cerrar</button></header>
+   <div>${chipE(t.est)} ${chipS(t)} <span style="margin-left:8px">${priC(t.pri)} prioridad</span></div>
+   <div class="meta">
+    <div class="field"><label for="se">Estado</label><select id="se" class="inp" ${dis("estado")}>${ESTADOS.map(e=>`<option ${t.est===e?"selected":""}>${e}</option>`).join("")}</select></div>
+    <div class="field"><label for="sp">Prioridad</label><select id="sp" class="inp" ${dis("prioridad")}>${Object.keys(SLA).map(e=>`<option ${t.pri===e?"selected":""}>${e}</option>`).join("")}</select></div>
+    <div class="field"><label for="sr">Responsable</label><select id="sr" class="inp" ${dis("asignar")}>${GESTORES.map(e=>`<option ${t.resp===e?"selected":""}>${e}</option>`).join("")}</select></div>
+    <div class="field"><label>Solicitante</label><div style="padding:8px 0">${esc(t.sol)}<div class="muted" style="font-size:12px">${ftime(t.created)}</div></div></div>
+   </div>
+   ${t.apr?`<div class="sec"><h4>Aprobación</h4><div>${t.apr==="Pendiente"?`<span class="chip c-espera">Pendiente de gerente</span>`:t.apr==="Aprobado"?`<span class="chip c-cerrado">Aprobado</span>`:`<span class="chip c-vencido">Rechazado</span>`}</div>
+     ${t.apr==="Pendiente"?(can("aprobar")?`<div class="tools"><button class="btn ok" id="ap">Aprobar</button><button class="btn bad" id="rj">Rechazar</button></div>`:`<div class="muted">Solo gerentes y administradores pueden aprobar.</div>`):""}</div>`:""}
+   <div class="sec"><h4>Detalle</h4><div>${esc(t.det)}</div>${t.foto?`<div class="photo">Evidencia fotográfica adjunta</div>`:""}</div>
+   ${ext?"":`<div class="sec"><h4>Materiales usados · ligados al inventario</h4>
+     ${mats.length?`<div class="tbl-wrap"><table style="min-width:0"><thead><tr><th>Material</th><th>Cant.</th><th>Costo</th></tr></thead><tbody>${mats.map(m=>`<tr><td>${esc(m.it.n)}</td><td class="mono">${m.q} ${m.it.u}</td><td class="mono">${cop(m.q*m.it.p)}</td></tr>`).join("")}</tbody></table></div><div class="muted">Costo total del ticket: <b class="mono" style="color:var(--fg)">${cop(cost(t))}</b></div>`:`<div class="muted">Aún no se registran materiales.</div>`}
+     ${can("materiales")?`<div class="tools"><select id="mi" class="inp" style="width:auto;flex:1;min-width:160px" aria-label="Material">${S.inv.map(i=>`<option value="${i.id}">${esc(i.n)} (stock ${i.s})</option>`).join("")}</select>
+      <input id="mq" class="inp" type="number" min="1" value="1" style="width:76px" aria-label="Cantidad"><button class="btn" id="ma">Registrar uso</button></div>`:`<div class="muted">Tu rol no permite registrar materiales.</div>`}</div>`}
+   ${ext?"":`<div class="sec"><h4>Comunicación</h4><div class="tools"><button class="btn" id="em">Correo de seguimiento</button>
+     <a class="btn" id="wa" target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encodeURIComponent(waText(t))}">Compartir por WhatsApp</a>
+     <button class="btn" id="cl">Copiar enlace</button></div></div>`}
+   <div class="sec"><h4>Historial</h4>
+     ${can("comentar")?`<div class="tools"><input id="cm" class="inp" style="flex:1;min-width:160px" placeholder="Agregar un comentario" aria-label="Comentario"><button class="btn" id="cb">Comentar</button></div>`:""}
+     <ul class="tl">${t.hist.map(h=>`<li><b>${esc(h.x)}</b><div class="muted" style="font-size:12px">${esc(h.who)} · ${ftime(h.t)}</div></li>`).join("")}</ul></div>
+  </aside>`;
+  const close=()=>{S.sel=null;renderLayer()};
+  $("#x").onclick=close;$("#scrim").onclick=close;
+  $("#se").onchange=e=>{const v=e.target.value;t.hist.unshift({t:Date.now(),who:meName(),x:"Cambió el estado a "+v});t.est=v;t.closed=v==="Cerrado"?Date.now():null;done(t)};
+  $("#sp").onchange=e=>{addHist(t,"Cambió la prioridad a "+e.target.value);t.pri=e.target.value;done(t)};
+  $("#sr").onchange=e=>{addHist(t,"Asignó a "+e.target.value);t.resp=e.target.value;done(t)};
+  if($("#ap"))$("#ap").onclick=()=>{t.apr="Aprobado";addHist(t,"Aprobó la solicitud de materiales");done(t)};
+  if($("#rj"))$("#rj").onclick=()=>{t.apr="Rechazado";t.est="No procede";addHist(t,"Rechazó la solicitud de materiales");done(t)};
+  if($("#ma"))$("#ma").onclick=()=>{const it=S.inv.find(i=>i.id===$("#mi").value),q=Math.max(1,parseInt($("#mq").value)||1);
+    if(it.s<q){toast("Stock insuficiente: quedan "+it.s+" "+it.u);return}
+    it.s-=q;const m=t.mats.find(x=>x.i===it.id);m?m.q+=q:t.mats.push({i:it.id,q});
+    S.mov.unshift({t:Date.now(),i:it.id,q:-q,tk:t.id});addHist(t,`Registró ${q} ${it.u} de ${it.n} (descontado del inventario)`);done(t)};
+  if($("#em"))$("#em").onclick=()=>modalMail(t);
+  if($("#cl"))$("#cl").onclick=()=>copy(trackLink(t));
+  if($("#cb"))$("#cb").onclick=()=>{const v=$("#cm").value.trim();if(!v)return;addHist(t,"Comentó: "+v);done(t)};
+  document.onkeydown=e=>{if(e.key==="Escape"){if($("#modal"))closeModal();else if(S.sel)close()}};
+}
+function done(t){save();const keep=S.sel;render();S.sel=keep;renderLayer()}
+function modalMail(t){
+  const m=document.createElement("div");m.className="modal";m.id="modal";
+  m.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-label="Vista previa del correo"><h3 style="margin:0">Vista previa del correo de seguimiento</h3>
+   <div class="mail"><div class="h"><span><b>Para:</b> ${esc(t.sol.toLowerCase().replace(/[^a-z]+/g,"."))}@empresa.example</span><span><b>Asunto:</b> TICKET ${t.id} · ${esc(t.nov)}</span></div>
+   <div class="b"><span>Hola ${esc(t.sol.split(" ")[0])},</span><span>Tu solicitud quedó registrada con el número <b class="mono">${t.id}</b> y está en estado <b>${t.est}</b>.</span>
+   <span>Punto: ${esc(pt(t.punto).n)}<br>Responsable: ${esc(t.resp)}</span><a class="btn primary" style="align-self:start" href="#" onclick="return false">Consultar el estado de mi ticket</a>
+   <span class="muted">Horario de atención: lunes a viernes, 8:00 a. m. a 5:00 p. m.</span></div></div>
+   <p class="muted" style="margin:0">En la versión real este correo sale solo al crear el ticket y cada vez que cambia el estado. Aquí es solo una vista previa; no se envía nada.</p>
+   <button class="btn" id="mc" style="align-self:end">Cerrar</button></div>`;
+  document.body.appendChild(m);$("#mc").onclick=closeModal;m.onclick=e=>{if(e.target===m)closeModal()};
+}
+function closeModal(){const m=$("#modal");if(m)m.remove()}
+
+/* ---------- Portal ---------- */
+function vPortal(){
+  $("#view").innerHTML=`<div class="portal card"><div class="brand" style="margin-bottom:6px"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M8 23V13l8 7 8-7v10" stroke="var(--accent-fg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.1" fill="var(--accent-fg)"/></svg><div><b>Reporte de novedades</b><small>Recibirás un número de ticket por correo</small></div></div>
+   <form id="fr" class="grid" style="gap:14px" novalidate>
+    <div class="field"><label for="fp">Punto de servicio</label><select id="fp" class="inp">${(me().rol==="Solicitante"?ptsVis():PUNTOS).map(p=>`<option value="${p.id}">${esc(p.n)} · ${esc(p.c)}</option>`).join("")}</select></div>
+    <div class="field"><label for="ft2">Tipo de solicitud</label><select id="ft2" class="inp">${TIPOS.map(p=>`<option>${p}</option>`).join("")}</select></div>
+    <div class="field"><label for="fn">¿Qué ocurre?</label><input id="fn" class="inp" placeholder="Ej.: La luz del punto de pago no funciona" maxlength="120"></div>
+    <div class="field"><label for="fd">Detalle</label><textarea id="fd" class="inp" placeholder="Cuéntanos qué pasó, desde cuándo y qué riesgo ves"></textarea></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">
+     <div class="field"><label for="fs">Tu nombre</label><input id="fs" class="inp" placeholder="Nombre y apellido" value="${esc(me().rol==="Solicitante"?me().n:"")}" ${me().rol==="Solicitante"?"readonly":""}></div>
+     <div class="field"><label for="ff">Foto (opcional)</label><input id="ff" class="inp" type="file" accept="image/*"></div></div>
+    <p id="err" class="muted" style="margin:0;color:var(--bad)" role="alert"></p>
+    <button class="btn primary" type="submit" style="justify-content:center">Enviar reporte</button></form></div>`;
+  $("#fr").onsubmit=e=>{e.preventDefault();
+    const nov=$("#fn").value.trim(),sol=$("#fs").value.trim();
+    if(!nov||!sol){$("#err").textContent="Completa qué ocurre y tu nombre para poder enviarlo.";return}
+    const tipo=$("#ft2").value,now=Date.now();
+    const t={id:"TK-"+S.next++,created:now,punto:$("#fp").value,tipo,nov,det:$("#fd").value.trim()||"Sin detalle adicional.",pri:"Medio",est:"Abierto",sol,resp:"Sin asignar",apr:tipo==="Materiales"?"Pendiente":null,foto:!!$("#ff").files.length,mats:[],hist:[{t:now,who:sol,x:"Reportó la novedad desde el portal"},{t:now,who:"Sistema",x:"Correo de acuse enviado al solicitante"}],closed:null};
+    S.tickets.unshift(t);save();
+    $("#view").innerHTML=`<div class="portal card" style="display:flex;flex-direction:column;gap:12px"><span class="chip c-cerrado" style="align-self:start">Recibido</span>
+      <h2 style="margin:0;font-size:20px;color:var(--fg)">Tu ticket es <span class="mono">${t.id}</span></h2>
+      <p class="muted" style="margin:0">Te enviamos un correo con el número y un enlace para ver el estado. El equipo de mantenimiento ya lo tiene en su bandeja.</p>
+      <div class="tools"><button class="btn primary" id="go">Ver en la bandeja de tickets</button><button class="btn" id="again">Reportar otra novedad</button></div></div>`;
+    $("#go").onclick=()=>{S.view="tickets";S.sel=t.id;render()};$("#again").onclick=vPortal;
+  };
+}
+
+/* ---------- Puntos ---------- */
+function vPuntos(){
+  $("#view").innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Punto</th><th>Ciudad</th><th>Abiertos</th><th>Total</th><th>Costo de materiales</th><th>Enlace de reporte</th></tr></thead><tbody>${ptsVis().map(p=>{
+   const T=vis().filter(t=>t.punto===p.id),link="https://mantia.example/r/"+p.id;
+   return `<tr><td><b style="font-weight:600">${esc(p.n)}</b></td><td>${p.c}</td><td class="mono">${T.filter(isOpen).length}</td><td class="mono">${T.length}</td><td class="mono">${cop(T.reduce((a,t)=>a+cost(t),0))}</td>
+   <td><button class="btn sm" data-l="${link}">Copiar enlace</button></td></tr>`}).join("")}</tbody></table></div>
+   <p class="muted">En la versión real, cada enlace se imprime como código QR y se pega en el punto. Quien lo escanea reporta sin crear usuario, y el ticket ya llega con el punto correcto.</p>`;
+  document.querySelectorAll("[data-l]").forEach(b=>b.onclick=()=>copy(b.dataset.l));
+}
+
+/* ---------- Inventario ---------- */
+function vInv(){
+  $("#view").innerHTML=`<div class="grid two"><div class="tbl-wrap"><table style="min-width:520px"><thead><tr><th>Material</th><th>Stock</th><th>Mínimo</th><th>Precio unitario</th><th></th></tr></thead><tbody>${S.inv.map(i=>`<tr><td>${esc(i.n)}</td><td class="mono">${i.s} ${i.u}</td><td class="mono muted">${i.min}</td><td class="mono">${cop(i.p)}</td><td>${i.s<=i.min?`<span class="chip c-vencido">Reponer</span>`:`<span class="chip c-cerrado">Bien</span>`}</td></tr>`).join("")}</tbody></table></div>
+   <div class="card"><h2>Movimientos de esta sesión</h2>${S.mov.length?`<ul class="feed">${S.mov.slice(0,8).map(m=>{const it=S.inv.find(x=>x.id===m.i);return `<li><span class="dot"></span><div>${m.q} ${it.u} · ${esc(it.n)}<div class="muted" style="font-size:12px">Por el ticket <span class="mono">${m.tk}</span> · ${ftime(m.t)}</div></div></li>`}).join("")}</ul>`:`<div class="muted">Abre un ticket, registra un material usado y verás aquí el descuento al instante.</div>`}</div></div>`;
+}
+
+/* ---------- Ecosistema ---------- */
+function vEco(){
+  $("#view").innerHTML=`<div class="grid"><div class="chain">
+   <div class="node live"><b>Punto de servicio</b><small>Cada sitio con su enlace, historial y costo acumulado.</small><span class="chip c-cerrado">Disponible en la demo</span></div>
+   <div class="node live"><b>Ticket</b><small>Reporte, prioridad, responsable, aprobación y plazos.</small><span class="chip c-cerrado">Disponible en la demo</span></div>
+   <div class="node"><b>Informe</b><small>Informe fotográfico automático al cerrar el ticket, con los materiales.</small><span class="chip c-noprocede">Próximo módulo</span></div>
+   <div class="node live"><b>Inventario</b><small>El material usado descuenta el stock y alerta cuando toca reponer.</small><span class="chip c-cerrado">Vista previa activa</span></div>
+   <div class="node"><b>Salida de material</b><small>Entrega a quien trabaja, con firma y trazabilidad por ticket.</small><span class="chip c-noprocede">Próximo módulo</span></div></div>
+   <div class="grid two"><div class="card"><h2>Qué cambia frente a una hoja de cálculo</h2><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px">
+     <li>Un dato se escribe una sola vez y aparece en todos los módulos.</li><li>Cada cambio queda con autor y hora: nadie edita sin que se note.</li>
+     <li>El costo de mantener cada punto se calcula solo.</li><li>Los permisos se dan por rol, no compartiendo un archivo.</li></ul></div>
+    <div class="card"><h2>Avisos y canales</h2><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px">
+     <li><b>Correo:</b> acuse con número de ticket y cada cambio de estado.</li><li><b>WhatsApp:</b> compartir el ticket al grupo con un toque; la conexión automática con la API oficial es una fase posterior.</li>
+     <li><b>Web:</b> el portal de reporte y el seguimiento funcionan desde el celular.</li></ul></div></div></div>`;
+}
+/* ---------- Usuarios ---------- */
+function vUsuarios(){
+  const RK=Object.keys(ROLE_DEF),EC={Activo:"c-cerrado",Inactivo:"c-noprocede",Pendiente:"c-espera"};
+  $("#view").innerHTML=`<div class="grid">
+   <div class="tbl-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Alcance</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead><tbody>${S.users.map(u=>`<tr>
+    <td><b style="font-weight:600">${esc(u.n)}</b><div class="muted" style="font-size:12px">${esc(u.e)}</div></td>
+    <td><select class="inp rsel" style="min-width:230px" data-u="${u.id}" aria-label="Rol de ${esc(u.n)}" ${u.id===S.me?'disabled title="No puedes cambiar tu propio rol"':""}>${RK.map(k=>`<option value="${k}" ${u.rol===k?"selected":""}>${ROLE_DEF[k].l}</option>`).join("")}</select></td>
+    <td style="max-width:240px">${esc(alcance(u))}</td><td><span class="chip ${EC[u.est]}">${u.est}</span></td><td class="muted">${esc(u.acc)}</td>
+    <td>${u.id===S.me?"":`<button class="btn sm" data-t="${u.id}">${u.est==="Inactivo"?"Activar":"Desactivar"}</button>`}</td></tr>`).join("")}</tbody></table></div>
+   <div class="grid two">
+    <div class="card"><h2>Qué puede hacer cada rol</h2><div class="tbl-wrap"><table class="mx" style="min-width:520px"><thead><tr><th>Acción</th>${RK.map(k=>`<th>${ROLE_DEF[k].l.split(" (")[0]}</th>`).join("")}</tr></thead><tbody>${ACCIONES.map(([a,l])=>`<tr><td>${l}</td>${RK.map(k=>`<td>${ROLE_DEF[k].can.includes(a)?'<span class="yes" aria-label="Sí">Sí</span>':'<span class="no" aria-label="No">—</span>'}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+     <p class="hint" style="margin:12px 0 0">Cada usuario además tiene un alcance: solo ve los puntos que se le asignan. Un cliente, por ejemplo, ve únicamente sus sedes. En la versión real estos permisos se aplican en el servidor, no solo en pantalla.</p></div>
+    <div class="card"><h2>Registro de cambios de acceso</h2>${S.audit.length?`<ul class="feed">${S.audit.slice(0,8).map(a=>`<li><span class="dot"></span><div>${esc(a.x)}<div class="muted" style="font-size:12px">${ftime(a.t)}</div></div></li>`).join("")}</ul>`:`<div class="muted">Aquí queda quién cambió roles o accesos. Cambia el rol de alguien o invita a una persona y aparecerá.</div>`}</div>
+   </div></div>`;
+  document.querySelectorAll(".rsel").forEach(s=>s.onchange=e=>{const u=S.users.find(x=>x.id===s.dataset.u),old=u.rol;u.rol=e.target.value;
+    logA(`${meName()} cambió el rol de ${u.n}: ${ROLE_DEF[old].l} → ${ROLE_DEF[u.rol].l}`);save();renderTools();vUsuarios();toast("Rol actualizado")});
+  document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{const u=S.users.find(x=>x.id===b.dataset.t);u.est=u.est==="Inactivo"?"Activo":"Inactivo";
+    logA(`${meName()} ${u.est==="Activo"?"activó":"desactivó"} a ${u.n}`);save();renderTools();vUsuarios();toast(u.est==="Activo"?"Usuario activado":"Usuario desactivado")});
+}
+function modalInvite(){
+  const m=document.createElement("div");m.className="modal";m.id="modal";
+  m.innerHTML=`<form class="box" id="fi" novalidate role="dialog" aria-modal="true" aria-label="Invitar usuario"><h3 style="margin:0">Invitar usuario</h3>
+   <div class="field"><label for="in">Nombre</label><input id="in" class="inp" placeholder="Nombre y apellido"></div>
+   <div class="field"><label for="ie">Correo</label><input id="ie" class="inp" type="email" placeholder="persona@empresa.com"></div>
+   <div class="field"><label for="ir">Rol</label><select id="ir" class="inp">${Object.keys(ROLE_DEF).map(k=>`<option value="${k}" ${k==="Consulta"?"selected":""}>${ROLE_DEF[k].l}</option>`).join("")}</select><span class="hint" id="id">${ROLE_DEF.Consulta.d}</span></div>
+   <div class="field"><label for="ia">Puntos que podrá ver</label><select id="ia" class="inp"><option value="all">Todos los puntos</option><option>Bogotá</option><option>Medellín</option><option>Cali</option></select></div>
+   <p id="ierr" style="margin:0;color:var(--bad)" role="alert"></p>
+   <div class="tools" style="justify-content:flex-end"><button type="button" class="btn" id="ic">Cancelar</button><button class="btn primary" type="submit">Enviar invitación</button></div></form>`;
+  document.body.appendChild(m);
+  $("#ir").onchange=e=>{$("#id").textContent=ROLE_DEF[e.target.value].d};
+  $("#ic").onclick=closeModal;m.onclick=e=>{if(e.target===m)closeModal()};
+  $("#fi").onsubmit=e=>{e.preventDefault();const n=$("#in").value.trim(),c=$("#ie").value.trim();
+    if(!n||!/^\S+@\S+\.\S+$/.test(c)){$("#ierr").textContent="Escribe el nombre y un correo válido para enviar la invitación.";return}
+    const a=$("#ia").value,pts=a==="all"?"all":PUNTOS.filter(p=>p.c===a).map(p=>p.id),rol=$("#ir").value;
+    S.users.push({id:"u"+Date.now(),n,e:c,rol,pts,est:"Pendiente",acc:"—"});
+    logA(`${meName()} invitó a ${n} como ${ROLE_DEF[rol].l}`);save();closeModal();renderTools();vUsuarios();toast("Invitación registrada (en la versión real sale por correo)")};
+  $("#in").focus();
+}
+render();
+</script>
