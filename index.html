@@ -295,7 +295,7 @@ function blank(){
   return {form:formDef(),roles:null,tickets:[],inv:[],puntos:[],db:null,hvTpl:tpl(),hv:{},hvSel:null,hvEdit:false,mov:[],next:1,view:"resumen",users:[{id:"u1",n:"Alejandro Lee",e:"",rol:"Administrador",pts:"all",est:"Activo",acc:"hoy"}],me:"u1",audit:[],f:{e:"todos",t:"todos",q:""},mode:"tabla",sel:null};
 }
 function load(){try{["v2","v3","v4","v5"].forEach(k=>localStorage.removeItem("mantia-demo-"+k))}catch(e){}
-  try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users&&o.puntos&&o.hvTpl&&"db" in o){if(!o.form)o.form=formDef();return o}}}catch(e){}return /[?&]demo/.test(location.search)?seed():blank()}
+  try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users&&o.puntos&&o.hvTpl&&"db" in o){if(!o.form)o.form=formDef();(o.puntos||[]).forEach(p=>{["n","pr","cc","zona","sub","op","ger","ges","asi","tipo","c","sis","mon","cl","obs","dir"].forEach(f=>{if(typeof p[f]==="string")p[f]=p[f].toLocaleUpperCase("es-CO")});if(p.ex)for(const k in p.ex)if(typeof p.ex[k]==="string")p.ex[k]=p.ex[k].toLocaleUpperCase("es-CO")});return o}}}catch(e){}return /[?&]demo/.test(location.search)?seed():blank()}
 /* ---------- Acceso: usuario y contraseña ---------- */
 const HVL=new Set();let MEMS=null,FD=null,FAILS=0,LOCK=0;
 const sget=()=>{try{return sessionStorage.getItem("mantia-s")||MEMS}catch(e){return MEMS}};
@@ -759,8 +759,8 @@ async function parseDB(file){
     map.forEach((k,i)=>{if(!k)return;let v=r[i];if(v==null)return;
       if(NUMF.includes(k)){v=Number(String(v).replace(/[^\d.\-]/g,""));o[k]=isFinite(v)?v:null}
       else if(k==="lat"||k==="lng"){v=parseFloat(String(v).replace(",","."));o[k]=isFinite(v)?v:null}
-      else{v=String(v).replace(/\s+/g," ").trim();if(v)o[k]=v}});
-    extraCols.forEach(([i,l])=>{if(r[i]!=null&&String(r[i]).trim()!=="")o.ex[l]=String(r[i]).trim()});
+      else{v=String(v).replace(/\s+/g," ").trim().toLocaleUpperCase("es-CO");if(v)o[k]=v}});
+    extraCols.forEach(([i,l])=>{if(r[i]!=null&&String(r[i]).trim()!=="")o.ex[l]=String(r[i]).trim().toLocaleUpperCase("es-CO")});
     if(!o.n){if(r.some(x=>x!=null&&String(x).trim()!==""))skip++;return}
     o.k=String(o.cc||o.pr||norm(o.n));
     if(used.has(o.k)){warn.push(`Fila ${best.hr+ri+2}: la clave «${o.k}» está repetida; se omitió «${o.n}».`);return}
