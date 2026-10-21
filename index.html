@@ -178,7 +178,7 @@ details.hvs>.in{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
       <div><b>Mantia</b><small>Gestión de operaciones</small></div>
     </div>
     <nav class="nav" id="nav" aria-label="Módulos"></nav>
-    <div class="demo-note">Versión de prueba · v7.6. Los datos que ingreses quedan solo en este navegador.</div>
+    <div class="demo-note">Versión de prueba · v7.7. Los datos que ingreses quedan solo en este navegador.</div>
   </aside>
   <div class="main">
     <div class="top">
@@ -967,7 +967,7 @@ function blank(){
 function load(){try{["v2","v3","v4","v5"].forEach(k=>localStorage.removeItem("mantia-demo-"+k))}catch(e){}
   try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users&&o.puntos&&o.hvTpl&&"db" in o){if(!o.form)o.form=formDef();(o.puntos||[]).forEach(p=>{["n","pr","cc","zona","sub","op","ger","ges","asi","tipo","c","sis","mon","cl","obs","dir"].forEach(f=>{if(typeof p[f]==="string")p[f]=p[f].toLocaleUpperCase("es-CO")});if(p.ex)for(const k in p.ex)if(typeof p.ex[k]==="string")p.ex[k]=p.ex[k].toLocaleUpperCase("es-CO")});return o}}}catch(e){}return /[?&]demo/.test(location.search)?seed():blank()}
 /* ---------- Acceso: usuario y contraseña ---------- */
-const VERSION="7.6";const HVL=new Set();let MEMS=null,FD=null,FAILS=0,LOCK=0;
+const VERSION="7.7";const HVL=new Set();let MEMS=null,FD=null,FAILS=0,LOCK=0;
 const sget=()=>{try{return sessionStorage.getItem("mantia-s")||MEMS}catch(e){return MEMS}};
 const sset=v=>{MEMS=v;try{v?sessionStorage.setItem("mantia-s",v):sessionStorage.removeItem("mantia-s")}catch(e){}};
 async function hashPw(pw,salt){
@@ -1534,7 +1534,7 @@ function vInv(){
 /* ---------- Mapa ---------- */
 let MAPI=null,PLACE=null,MAPQ="";
 const BLANKTILE="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-const TILES=[{u:"https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",a:"© contribuidores de OpenStreetMap © CARTO",o:{subdomains:"abcd"}},{u:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",a:"© contribuidores de OpenStreetMap",o:{}}];
+const TILES=[{u:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",a:"© contribuidores de OpenStreetMap",o:{}},{u:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",a:"Tiles © Esri",o:{}}];
 function loadLeaflet(cb){
   if(window.L){cb(true);return}
   if(window.__lfp){window.__lfp.push(cb);return}
