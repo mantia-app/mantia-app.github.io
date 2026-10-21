@@ -350,7 +350,7 @@ const cop=n=>"$"+Math.round(n).toLocaleString("es-CO");
 const pt=id=>PUNTOS.find(p=>p.id===id);
 const actor=()=>S.users.find(u=>u.id===S.me)||S.users[0];
 const me=()=>(!S.demo&&S.prev&&actor().rol==="Administrador"&&S.users.find(u=>u.id===S.prev))||actor();
-const roleCan=r=>r==="Administrador"?ROLE_DEF[r].can:((S.roles&&S.roles[r])||ROLE_DEF[r].can);
+const roleCan=r=>r==="Administrador"?ROLE_DEF[r].can:((S.roles&&S.roles[r])||ROLE_DEF[r].can).filter(a=>a!=="usuarios");
 const can=a=>{const u=me();if(a==="crear"&&u.rol!=="Administrador"&&(u.rep==="si"||u.rep==="no"))return u.rep==="si";return roleCan(u.rol).includes(a)};
 const dis=a=>can(a)?"":'disabled title="Tu rol no permite este cambio"';
 const meName=()=>actor().n;
@@ -510,13 +510,13 @@ function list(){
   const L=filtered();
   if(!L.length){$("#list").innerHTML=`<div class="card empty">${S.tickets.length?"Ningún ticket coincide con los filtros.":"Todavía no hay tickets. Cuando alguien reporte una novedad desde el portal, aparecerá aquí."}</div>`;return}
   if(S.mode==="tabla"){
-   $("#list").innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Ticket</th><th>Punto</th><th>Novedad</th><th>Tipo</th><th>Prior.</th><th>Estado</th><th>Responsable</th><th>Antigüedad</th></tr></thead><tbody>${L.map(t=>`
-    <tr class="row" data-id="${t.id}" tabindex="0"><td class="mono">${t.id}</td><td>${esc(pt(t.punto).n)}</td><td class="trunc">${esc(t.nov)}</td><td>${t.tipo}</td><td>${priC(t.pri)}</td>
+   $("#list").innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Ticket</th><th>Punto</th><th>Novedad</th><th>Tipo</th><th>Creado por</th><th>Prior.</th><th>Estado</th><th>Responsable</th><th>Antigüedad</th></tr></thead><tbody>${L.map(t=>`
+    <tr class="row" data-id="${t.id}" tabindex="0"><td class="mono">${t.id}</td><td>${esc(pt(t.punto).n)}</td><td class="trunc">${esc(t.nov)}</td><td>${t.tipo}</td><td>${esc(t.sol)}${t.solUs?`<div class="muted" style="font-size:12px">@${esc(t.solUs)}</div>`:""}</td><td>${priC(t.pri)}</td>
     <td>${chipE(t.est)} ${chipS(t)}</td><td>${esc(t.resp)}</td><td class="muted">${ago(t.created)}</td></tr>`).join("")}</tbody></table></div>`;
    document.querySelectorAll("tr.row").forEach(r=>{r.onclick=()=>open(r.dataset.id);r.onkeydown=e=>{if(e.key==="Enter")open(r.dataset.id)}});
   }else{
    $("#list").innerHTML=`<div class="board">${ESTADOS.map(e=>{const c=L.filter(t=>t.est===e);return `<div class="col"><h3><span>${e}</span><span>${c.length}</span></h3>${c.map(t=>`
-     <button class="tk" data-id="${t.id}"><span class="mono muted">${t.id} · ${ago(t.created)}</span><b style="font-weight:600">${esc(t.nov)}</b><span class="muted">${esc(pt(t.punto).n)}</span><span>${priC(t.pri)} ${chipS(t)}</span></button>`).join("")}</div>`}).join("")}</div>`;
+     <button class="tk" data-id="${t.id}"><span class="mono muted">${t.id} · ${ago(t.created)}</span><b style="font-weight:600">${esc(t.nov)}</b><span class="muted">${esc(pt(t.punto).n)}</span><span class="muted">Creado por ${esc(t.sol)}</span><span>${priC(t.pri)} ${chipS(t)}</span></button>`).join("")}</div>`}).join("")}</div>`;
    document.querySelectorAll(".tk").forEach(r=>r.onclick=()=>open(r.dataset.id));
   }
 }
@@ -536,7 +536,7 @@ function renderLayer(){
     <div class="field"><label for="se">Estado</label><select id="se" class="inp" ${dis("estado")}>${ESTADOS.map(e=>`<option ${t.est===e?"selected":""}>${e}</option>`).join("")}</select></div>
     <div class="field"><label for="sp">Prioridad</label><select id="sp" class="inp" ${dis("prioridad")}>${Object.keys(SLA).map(e=>`<option ${t.pri===e?"selected":""}>${e}</option>`).join("")}</select></div>
     <div class="field"><label for="sr">Responsable</label><select id="sr" class="inp" ${dis("asignar")}>${gestores(t.resp).map(e=>`<option ${t.resp===e?"selected":""}>${e}</option>`).join("")}</select></div>
-    <div class="field"><label>Solicitante</label><div style="padding:8px 0">${esc(t.sol)}${t.corr?`<div class="muted" style="font-size:12px">${esc(t.corr)}</div>`:""}<div class="muted" style="font-size:12px">${ftime(t.created)}</div></div></div>
+    <div class="field"><label>Creado por</label><div style="padding:8px 0">${esc(t.sol)}${t.solUs?` <span class="muted">· @${esc(t.solUs)}</span>`:""}${t.corr?`<div class="muted" style="font-size:12px">${esc(t.corr)}</div>`:""}<div class="muted" style="font-size:12px">${ftime(t.created)}</div></div></div>
    </div>
    ${t.apr?`<div class="sec"><h4>Aprobación</h4><div>${t.apr==="Pendiente"?`<span class="chip c-espera">Pendiente de gerente</span>`:t.apr==="Aprobado"?`<span class="chip c-cerrado">Aprobado</span>`:`<span class="chip c-vencido">Rechazado</span>`}</div>
      ${t.apr==="Pendiente"?(can("aprobar")?`<div class="tools"><button class="btn ok" id="ap">Aprobar</button><button class="btn bad" id="rj">Rechazar</button></div>`:`<div class="muted">Solo gerentes y administradores pueden aprobar.</div>`):""}</div>`:""}
@@ -632,7 +632,7 @@ function vPortal(){
       nov="Solicitud de materiales: "+mat;const med=g("m_med"),ob=g("m_obs");
       det=`Cantidad: ${can_}${med?" | Medida: "+med:""}${ob?" | Obs: "+ob:""}`;ex=[["Material",mat],["Cantidad",can_]]}
     const now=Date.now(),corr=A.e||"";
-    const t={id:"TK-"+S.next++,created:now,punto:ppick.id,tipo,nov,det,pri:"Medio",est:"Abierto",sol:A.n,solU:A.id,corr,ex,resp:"Sin asignar",apr:tipo==="Materiales"?"Pendiente":null,foto:!!$("#ff").files.length,mats:[],hist:[{t:now,who:A.n,x:"Reportó la novedad desde el portal"}].concat(corr?[{t:now,who:"Sistema",x:"Correo de acuse enviado a "+corr}]:[]),closed:null};
+    const t={id:"TK-"+S.next++,created:now,punto:ppick.id,tipo,nov,det,pri:"Medio",est:"Abierto",sol:A.n,solU:A.id,solUs:A.us||"",corr,ex,resp:"Sin asignar",apr:tipo==="Materiales"?"Pendiente":null,foto:!!$("#ff").files.length,mats:[],hist:[{t:now,who:A.n,x:"Reportó la novedad desde el portal"}].concat(corr?[{t:now,who:"Sistema",x:"Correo de acuse enviado a "+corr}]:[]),closed:null};
     S.tickets.unshift(t);logA(`reportó el ticket ${t.id} (${T.label}) en ${ppick.n}`);save();
     $("#view").innerHTML=`<div class="portal card" style="display:flex;flex-direction:column;gap:12px"><span class="chip c-cerrado" style="align-self:start">Recibido</span>
       <h2 style="margin:0;font-size:20px;color:var(--fg)">Tu ticket es <span class="mono">${t.id}</span></h2>
@@ -1042,8 +1042,8 @@ function vUsuarios(){
     <td style="max-width:260px">${esc(alcance(u))}<div class="muted" style="font-size:12px">Hoja de vida: ${NIVEL[mods(u).hv]} · Inventario: ${NIVEL[mods(u).inv]}</div></td><td><span class="chip ${EC[u.est]}">${u.est}</span></td><td class="muted">${esc(u.acc)}</td>
     <td><div class="tools" style="flex-wrap:nowrap"><button class="btn sm" data-eu="${u.id}">Editar</button>${u.id===S.me?"":`<button class="btn sm" data-t="${u.id}">${u.est==="Inactivo"?"Activar":"Desactivar"}</button><button class="btn sm" data-du="${u.id}">Eliminar</button>`}</div></td></tr>`).join("")}</tbody></table></div>
    <div class="grid two">
-    <div class="card"><h2>Qué puede hacer cada rol</h2><div class="tbl-wrap"><table class="mx" style="min-width:520px"><thead><tr><th>Acción</th>${RK.map(k=>`<th>${ROLE_DEF[k].l.split(" (")[0]}</th>`).join("")}</tr></thead><tbody>${ACCIONES.map(([a,l])=>`<tr><td>${l}</td>${RK.map(k=>`<td style="text-align:center"><input type="checkbox" class="rc" data-r="${k}" data-a="${a}" aria-label="${esc(l)} — ${ROLE_DEF[k].l}" ${roleCan(k).includes(a)?"checked":""} ${k==="Administrador"||!can("usuarios")?"disabled":""}></td>`).join("")}</tr>`).join("")}</tbody></table></div>
-     <div class="tools" style="margin-top:10px"><button class="btn sm" id="rrst">Restaurar permisos por defecto</button></div><p class="hint" style="margin:12px 0 0">Marca o desmarca para cambiar lo que puede hacer cada rol. El Administrador siempre tiene todo. Para dar o quitar solo el permiso de reportar a una persona, usa «Puede reportar novedades» al editarla. Cada usuario además tiene un alcance: solo ve los puntos que se le asignan. Y el administrador decide, usuario por usuario, quién accede a Hojas de vida e Inventario (sin acceso, solo ver, ver y editar). Un cliente, por ejemplo, ve únicamente sus sedes. En la versión real estos permisos se aplican en el servidor, no solo en pantalla.</p></div>
+    <div class="card"><h2>Qué puede hacer cada rol</h2><div class="tbl-wrap"><table class="mx" style="min-width:520px"><thead><tr><th>Acción</th>${RK.map(k=>`<th>${ROLE_DEF[k].l.split(" (")[0]}</th>`).join("")}</tr></thead><tbody>${ACCIONES.map(([a,l])=>`<tr><td>${l}</td>${RK.map(k=>`<td style="text-align:center"><input type="checkbox" class="rc" data-r="${k}" data-a="${a}" aria-label="${esc(l)} — ${ROLE_DEF[k].l}" ${roleCan(k).includes(a)?"checked":""} ${k==="Administrador"||!can("usuarios")||a==="usuarios"?"disabled":""}></td>`).join("")}</tr>`).join("")}</tbody></table></div>
+     <div class="tools" style="margin-top:10px"><button class="btn sm" id="rrst">Restaurar permisos por defecto</button></div><p class="hint" style="margin:12px 0 0">Marca o desmarca para cambiar lo que puede hacer cada rol. El Administrador siempre tiene todo y es el único que puede crear cuentas. Para dar o quitar solo el permiso de reportar a una persona, usa «Puede reportar novedades» al editarla. Cada usuario además tiene un alcance: solo ve los puntos que se le asignan. Y el administrador decide, usuario por usuario, quién accede a Hojas de vida e Inventario (sin acceso, solo ver, ver y editar). Un cliente, por ejemplo, ve únicamente sus sedes. En la versión real estos permisos se aplican en el servidor, no solo en pantalla.</p></div>
     <div class="grid">
      <div class="card"><h2>Registro de actividad</h2>${S.audit.length?`<ul class="feed">${S.audit.slice(0,15).map(a=>`<li><span class="dot"></span><div>${esc(!a.who||a.x.startsWith(a.who)?a.x:a.who+" "+a.x)}<div class="muted" style="font-size:12px">${ftime(a.t)}</div></div></li>`).join("")}</ul>`:`<div class="muted">Aquí queda quién hizo cada cambio y cuándo.</div>`}</div>
      ${can("configurar")?`<div class="card"><h2>Datos de la cuenta</h2><p class="hint" style="margin:0 0 12px">Para preparar la herramienta para un cliente nuevo. Estas acciones no se pueden deshacer.</p><div class="tools"><button class="btn" id="d1">Borrar todos los tickets</button><button class="btn bad" id="d2">Empezar vacío</button><button class="btn" id="d3">Cargar datos de ejemplo</button></div></div>`:""}
