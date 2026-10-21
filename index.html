@@ -1546,6 +1546,7 @@ function vMapa(){
     $("#mlist").innerHTML=R.slice(0,150).map(p=>{const i=pinInfo(p);return `<li style="display:flex;align-items:center;gap:10px">${hasLoc(p)?`<span class="pin ${i.cls}" style="flex:none;width:26px;height:26px;font-size:11px">${i.n}</span>`:`<span class="dot" style="flex:none;background:var(--line-strong)"></span>`}<div style="min-width:0"><b style="font-weight:600">${esc(p.n)}</b><div class="muted" style="font-size:12px">${esc(p.zona?p.zona+" · ":"")}${esc(p.c)}</div></div>${hasLoc(p)?`<button class="btn sm" style="margin-left:auto" data-fly="${p.id}">Ver</button>`:adm?`<button class="btn sm" style="margin-left:auto" data-loc="${p.id}">Ubicar</button>`:`<span class="muted" style="margin-left:auto;font-size:12px">Sin ubicar</span>`}</li>`}).join("")||`<li class="muted">Ningún punto coincide.</li>`;
     if(R.length>150)$("#mlist").insertAdjacentHTML("beforeend",`<li class="muted">Se muestran 150 de ${R.length}; usa el buscador.</li>`)};
   list();$("#mq").oninput=e=>{MAPQ=e.target.value;list()};
+  $("#mlist").onclick=e=>{const l=e.target.closest("[data-loc]");if(l)modalUbicar(pt(l.dataset.loc))};
   loadLeaflet(ok=>{
     const el=$("#map");if(!el||S.view!=="mapa")return;
     if(!ok||!con.length&&!PLACE){mapFallback(el,con);if(!ok)msg("No se pudo cargar el mapa base; se muestra la posición relativa.");else if(!con.length)msg("Aún no hay puntos ubicados. Usa «Ubicar» en la lista.");return}
@@ -1570,7 +1571,6 @@ function vMapa(){
       if(a){const q=pt(a.dataset.mt);S.f.q=q.n;S.f.e="todos";S.f.t="todos";S.view="tickets";render()}
       if(b){S.view="hv";S.hvSel=b.dataset.mh;render()}});
   });
-  if(!window.L)$("#mlist").onclick=e=>{const l=e.target.closest("[data-loc]");if(l)modalUbicar(pt(l.dataset.loc))};
 }
 function mapFallback(el,con){
   if(!con.length){el.innerHTML=`<div class="empty">Ningún punto tiene ubicación todavía.</div>`;return}
