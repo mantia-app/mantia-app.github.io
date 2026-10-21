@@ -229,6 +229,12 @@ const ROLE_DEF={
  "Gestor":{l:"Gestor de mantenimiento",d:"Atiende tickets y registra materiales",can:["ver","crear","estado","materiales","comentar"]},
  "Consulta":{l:"Consulta (solo lectura)",d:"Ve los tickets y tableros de sus puntos; no modifica nada",can:["ver"]},
  "Solicitante":{l:"Solicitante",d:"Reporta novedades y sigue sus propios tickets",can:["crear","propios"]}};
+function formDef(){const R=Object.keys(ROLE_DEF);return {
+ horario:"Lunes a viernes de 8:00 a. m. a 5:00 p. m. (días hábiles).",
+ conds:["Esté autorizada por el gerente en el cuadro de control de tickets.","Se envíe por el canal correcto y esté dentro del alcance permitido.","Esté priorizada según tipo (bajo, medio o alto).","Tenga soporte y justificación.","Se ajuste al presupuesto disponible."],
+ tipos:[{k:"Materiales",label:"MATERIALES PARA PUNTO DE SERVICIO",on:true,roles:R.slice()},{k:"Avisos",label:"AVISOS",on:true,roles:R.slice()},{k:"Mantenimiento",label:"MANTENIMIENTO",on:true,roles:R.slice()}],
+ mats:["CONOS","CAJON MONEDERO","BICICLETERO","GUAYAS PARA BICICLETERO","CANDADO","CERRADURAS","COLOMBINAS","SOLICITUD DE VIDRIOS","SOLICITUD DE POLARIZADOS","SOLICITUD DE SILLAS","CAJILLAS DE SEGURIDAD","SOMBRILLA","BANDERAS","LOCKER","HORNO MICROONDAS","CAJON DE LLAVES","VENTILADOR","CONTADORA DE BILLETES"].map(n=>({n,med:n==="SOLICITUD DE SILLAS"})),
+ areas:["Operaciones","Comercial"],pub:["Cliente interno","Cliente externo"],pie:["Digital","Impresa"],img:["Ilustración","Fotografía","Ilustración y fotografía","Solo texto"]}}
 const ACCIONES=[["ver","Ver tickets y tableros de su alcance"],["propios","Seguir sus propios tickets"],["crear","Reportar novedades"],["estado","Cambiar el estado de un ticket"],["prioridad","Cambiar la prioridad"],["asignar","Asignar responsable"],["aprobar","Aprobar o rechazar materiales"],["materiales","Registrar materiales usados"],["comentar","Comentar en tickets"],["usuarios","Gestionar usuarios y permisos"],["configurar","Configurar inventario, ubicaciones y datos de la cuenta"],["cargarbase","Cargar la base mensual de puntos de servicio"]];
 const USERS0=[
  {id:"u1",n:"Andrea Salazar",e:"andrea.salazar@cliente.example",rol:"Administrador",pts:"all",est:"Activo",acc:"hoy"},
@@ -267,7 +273,8 @@ let S;
 Object.defineProperty(window,"PUNTOS",{get:()=>S.puntos});
 const KEY="mantia-demo-v6";
 function pcost(inv,list){return list.reduce((a,m)=>a+m.q*inv.find(x=>x.id===m.i).p,0)}
-function seed(){
+function seed(){const o=seed0();o.form=formDef();o.demo=true;return o}
+function seed0(){
   const inv=JSON.parse(JSON.stringify(INV0));
   const tickets=SEED.map((r,k)=>{
     const created=NOW-r[0]*DAY-((k*37)%9)*36e5;
@@ -285,10 +292,55 @@ function seed(){
   return {tickets,inv,puntos:PUNTOS0.map(p=>({k:p.cc,zona:p.c==="Bogotá"?"Norte":"Regional",sub:"Demostración",op:"Operando",ger:"Camilo Herrera",ges:"Camila Ortiz",sis:"SIP",cC:60,cM:10,cB:8,tot:70,cl:"Demostración",...p})),db:{mes:"Datos de ejemplo",fecha:null,archivo:"",n:PUNTOS0.length,hist:[]},hvTpl,hv,hvSel:null,hvEdit:false,mov:[],next:101+SEED.length,view:"resumen",users:JSON.parse(JSON.stringify(USERS0)),me:"u1",audit:[],f:{e:"todos",t:"todos",q:""},mode:"tabla",sel:null};
 }
 function blank(){
-  return {tickets:[],inv:[],puntos:[],db:null,hvTpl:tpl(),hv:{},hvSel:null,hvEdit:false,mov:[],next:1,view:"resumen",users:[{id:"u1",n:"Alejandro Lee",e:"",rol:"Administrador",pts:"all",est:"Activo",acc:"hoy"}],me:"u1",audit:[],f:{e:"todos",t:"todos",q:""},mode:"tabla",sel:null};
+  return {form:formDef(),roles:null,tickets:[],inv:[],puntos:[],db:null,hvTpl:tpl(),hv:{},hvSel:null,hvEdit:false,mov:[],next:1,view:"resumen",users:[{id:"u1",n:"Alejandro Lee",e:"",rol:"Administrador",pts:"all",est:"Activo",acc:"hoy"}],me:"u1",audit:[],f:{e:"todos",t:"todos",q:""},mode:"tabla",sel:null};
 }
 function load(){try{["v2","v3","v4","v5"].forEach(k=>localStorage.removeItem("mantia-demo-"+k))}catch(e){}
-  try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users&&o.puntos&&o.hvTpl&&"db" in o)return o}}catch(e){}return /[?&]demo/.test(location.search)?seed():blank()}
+  try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users&&o.puntos&&o.hvTpl&&"db" in o){if(!o.form)o.form=formDef();return o}}}catch(e){}return /[?&]demo/.test(location.search)?seed():blank()}
+/* ---------- Acceso: usuario y contraseña ---------- */
+const HVL=new Set();let MEMS=null,FD=null,FAILS=0,LOCK=0;
+const sget=()=>{try{return sessionStorage.getItem("mantia-s")||MEMS}catch(e){return MEMS}};
+const sset=v=>{MEMS=v;try{v?sessionStorage.setItem("mantia-s",v):sessionStorage.removeItem("mantia-s")}catch(e){}};
+async function hashPw(pw,salt){
+  try{if(window.crypto&&crypto.subtle){const E=new TextEncoder(),k=await crypto.subtle.importKey("raw",E.encode(pw),"PBKDF2",false,["deriveBits"]);
+    const b=await crypto.subtle.deriveBits({name:"PBKDF2",salt:E.encode(salt),iterations:100000,hash:"SHA-256"},k,256);return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}}catch(e){}
+  let x=5381;const s=salt+pw;for(let r=0;r<2000;r++)for(let i=0;i<s.length;i++)x=((x<<5)+x+s.charCodeAt(i)+r)|0;return "f"+(x>>>0).toString(16)}
+async function setPw(u,pw,must){u.salt=Math.random().toString(36).slice(2)+Date.now().toString(36);u.ph=await hashPw(pw,u.salt);u.must=!!must}
+function logout(){sset(null);S.prev=null;S.sel=null;$("#view").innerHTML="";$("#nav").innerHTML="";$("#tools").innerHTML="";$("#notice").innerHTML="";showAuth()}
+function showAuth(forceUser){
+  const old=$("#auth");if(old)old.remove();
+  const first=S.users.every(u=>!u.ph),adm=S.users.find(u=>u.rol==="Administrador")||S.users[0];
+  const mode=forceUser?"force":first?"setup":"login",slug=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,".").replace(/^\.|\.$/g,"");
+  const T={login:["Iniciar sesión","Ingresa con tu usuario y contraseña."],setup:["Crea tu acceso de administrador","Es la primera vez que se abre esta cuenta. Define tu usuario y una contraseña."],force:["Define tu contraseña","Estás usando una contraseña temporal. Crea una propia para continuar."]}[mode];
+  const f=(id,l,t,v,ph,ac)=>`<div class="field"><label for="${id}">${l}</label><input id="${id}" class="inp" type="${t}" value="${esc(v||"")}" placeholder="${ph||""}" autocomplete="${ac||"off"}"></div>`;
+  const a=document.createElement("div");a.id="auth";a.style.cssText="position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:16px;overflow:auto";
+  a.innerHTML=`<form class="card" novalidate style="width:100%;max-width:400px;display:grid;gap:14px"><div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M8 23V13l8 7 8-7v10" stroke="var(--accent-fg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.1" fill="var(--accent-fg)"/></svg><div><b>Mantia</b><small>Gestión de operaciones</small></div></div>
+   <div><h2 style="margin:0 0 4px;font-size:18px">${T[0]}</h2><p class="muted" style="margin:0">${T[1]}</p></div>
+   ${mode==="login"?f("au","Usuario","text","","tu.usuario","username")+f("ap","Contraseña","password","","","current-password"):mode==="setup"?f("an","Nombre","text",adm.n,"")+f("au","Usuario","text",slug(adm.n),"","username")+f("ae","Correo (opcional)","email","","","email")+f("ap","Contraseña (mínimo 8 caracteres)","password","","","new-password")+f("ap2","Repite la contraseña","password","","","new-password"):f("ap","Nueva contraseña (mínimo 8 caracteres)","password","","","new-password")+f("ap2","Repite la contraseña","password","","","new-password")}
+   <p id="aerr" class="muted" style="margin:0;color:var(--bad)" role="alert"></p>
+   <button class="btn primary" type="submit" style="justify-content:center">${mode==="login"?"Entrar":"Continuar"}</button></form>`;
+  document.body.appendChild(a);const E=m=>{$("#aerr").textContent=m};const ff=a.querySelector("input");if(ff)ff.focus();
+  const enter=u=>{sset(u.id);S.me=u.id;S.prev=null;u.acc=ftime(Date.now());if(u.est==="Pendiente")u.est="Activo";a.remove();S.view=views().includes(S.view)?S.view:views()[0];save();render()};
+  a.querySelector("form").onsubmit=async ev=>{ev.preventDefault();E("");const g=id=>($("#"+id)?$("#"+id).value:"");
+    if(mode==="login"){
+      if(Date.now()<LOCK)return E("Demasiados intentos. Espera "+Math.ceil((LOCK-Date.now())/1000)+" s.");
+      const us=g("au").trim().toLowerCase(),u=S.users.find(x=>(x.us||"").toLowerCase()===us&&x.ph&&x.est!=="Inactivo");
+      const ok=u&&(await hashPw(g("ap"),u.salt))===u.ph;
+      if(!ok){FAILS++;if(FAILS>=5){LOCK=Date.now()+30000;FAILS=0}return E("Usuario o contraseña incorrectos.")}
+      FAILS=0;S.me=u.id;logA("inició sesión");
+      if(u.must){S.me=u.id;showAuth(u.id);return}enter(u);return}
+    if(mode==="setup"){
+      const n=g("an").trim(),us=g("au").trim().toLowerCase(),e=g("ae").trim(),p1=g("ap"),p2=g("ap2");
+      if(!n)return E("Escribe tu nombre.");if(!/^[a-z0-9._-]{3,30}$/.test(us))return E("Usuario: 3 a 30 letras minúsculas, números, punto, guion o guion bajo.");
+      if(e&&!/^\S+@\S+\.\S+$/.test(e))return E("El correo no es válido.");if(p1.length<8)return E("La contraseña debe tener mínimo 8 caracteres.");if(p1!==p2)return E("Las contraseñas no coinciden.");
+      Object.assign(adm,{n,us,e});await setPw(adm,p1,false);S.me=adm.id;logA("creó el acceso de administrador");enter(adm);return}
+    const u=S.users.find(x=>x.id===forceUser),p1=g("ap"),p2=g("ap2");
+    if(p1.length<8)return E("La contraseña debe tener mínimo 8 caracteres.");if(p1!==p2)return E("Las contraseñas no coinciden.");
+    await setPw(u,p1,false);S.me=u.id;logA("definió su contraseña");enter(u)};
+}
+function modalPw(){
+  formModal("Cambiar contraseña",`<div class="field"><label for="pw1">Nueva contraseña (mínimo 8 caracteres)</label><input id="pw1" class="inp" type="password" autocomplete="new-password"></div><div class="field"><label for="pw2">Repite la contraseña</label><input id="pw2" class="inp" type="password" autocomplete="new-password"></div>`,"Guardar",()=>{
+    const a=$("#pw1").value,b=$("#pw2").value;if(a.length<8)return "Mínimo 8 caracteres.";if(a!==b)return "Las contraseñas no coinciden.";
+    const u=actor();setPw(u,a,false).then(()=>{logA("cambió su contraseña");save();toast("Contraseña actualizada")})})}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 S=load(); S.sel=null; S.hvSel=null; S.hvEdit=false;
 
@@ -296,20 +348,22 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cop=n=>"$"+Math.round(n).toLocaleString("es-CO");
 const pt=id=>PUNTOS.find(p=>p.id===id);
-const me=()=>S.users.find(u=>u.id===S.me)||S.users[0];
-const can=a=>ROLE_DEF[me().rol].can.includes(a);
+const actor=()=>S.users.find(u=>u.id===S.me)||S.users[0];
+const me=()=>(!S.demo&&S.prev&&actor().rol==="Administrador"&&S.users.find(u=>u.id===S.prev))||actor();
+const roleCan=r=>r==="Administrador"?ROLE_DEF[r].can:((S.roles&&S.roles[r])||ROLE_DEF[r].can);
+const can=a=>{const u=me();if(a==="crear"&&u.rol!=="Administrador"&&(u.rep==="si"||u.rep==="no"))return u.rep==="si";return roleCan(u.rol).includes(a)};
 const dis=a=>can(a)?"":'disabled title="Tu rol no permite este cambio"';
-const meName=()=>me().n;
+const meName=()=>actor().n;
 const mods=u=>u.rol==="Administrador"?{hv:"editar",inv:"editar"}:{...MOD_DEF[u.rol],...(u.mods||{})};
 const lvl=m=>mods(me())[m];
 const inScope=(u,id)=>{if(u.pts==="all")return true;if(Array.isArray(u.pts))return u.pts.includes(id);const p=pt(id);return !!p&&(u.pts.zonas||[]).includes(p.zona)};
-const vis=()=>{const u=me();return u.rol==="Solicitante"?S.tickets.filter(t=>t.sol===u.n):S.tickets.filter(t=>inScope(u,t.punto))};
+const vis=()=>{const u=me();return u.rol==="Solicitante"?S.tickets.filter(t=>t.solU===u.id||t.sol===u.n):S.tickets.filter(t=>inScope(u,t.punto))};
 const ptsVis=()=>{const u=me();return PUNTOS.filter(p=>!p.baja&&inScope(u,p.id))};
 const plabel=p=>`${p.n} · ${p.c} · ${p.cc||p.id}`;
 const alcance=u=>u.pts==="all"?"Todos los puntos":Array.isArray(u.pts)?(u.pts.length>3?u.pts.length+" puntos específicos":u.pts.map(id=>(pt(id)||{n:id}).n).join(", ")||"Sin puntos"):"Zonas: "+((u.pts.zonas||[]).join(", ")||"ninguna");
-const logA=x=>{S.audit.unshift({t:Date.now(),x})};
-function views(){const r=me().rol;if(r==="Solicitante")return["portal","tickets"];
-  const v=["resumen","tickets"];if(can("crear"))v.push("portal");v.push("puntos","mapa");if(lvl("hv")!=="ninguno")v.push("hv");if(lvl("inv")!=="ninguno")v.push("inv");v.push("eco");if(can("usuarios"))v.push("usuarios");if(can("cargarbase"))v.push("cargar");return v}
+const logA=x=>{S.audit.unshift({t:Date.now(),x,who:actor().n});if(S.audit.length>500)S.audit.length=500};
+function views(){const r=me().rol;if(r==="Solicitante")return can("crear")?["portal","tickets"]:["tickets"];
+  const v=["resumen","tickets"];if(can("crear"))v.push("portal");v.push("puntos","mapa");if(lvl("hv")!=="ninguno")v.push("hv");if(lvl("inv")!=="ninguno")v.push("inv");v.push("eco");if(can("usuarios"))v.push("usuarios");if(can("cargarbase"))v.push("cargar");if(can("configurar"))v.push("cform");return v}
 const ago=t=>{const d=(NOW-t)/DAY;return d<1?"hoy":d<2?"ayer":"hace "+Math.floor(d)+" d"};
 const fdate=t=>new Date(t).toLocaleDateString("es-CO",{day:"2-digit",month:"short"});
 const ftime=t=>new Date(t).toLocaleString("es-CO",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
@@ -350,10 +404,11 @@ const IC={
  sal:'<path d="M3 5h10v10H3zM13 8h3l1 3v4h-4M6 17a1.5 1.5 0 1 0 0 .01M14 17a1.5 1.5 0 1 0 0 .01"/>'};
 IC.hv='<path d="M5 3h7l3 3v11H5zM12 3v3h3M7.5 12l1.8 1.8 3.2-3.6"/>';
 IC.mapa='<path d="M3 5l5-2 4 2 5-2v12l-5 2-4-2-5 2zM8 3v12M12 5v12"/>';
+IC.cform='<path d="M5 2h8l3 3v13H5z"/><path d="M8 9h5M8 12h5M8 15h3"/>';
 IC.usuarios='<circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5M14 4a3 3 0 0 1 0 6M16 12c1.5.6 2 2 2 3"/>';
 IC.usr='<circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5M14 4a3 3 0 0 1 0 6M16 12c1.5.6 2 2 2 3"/>';
 const ico=k=>`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
-const TITLES={resumen:["Resumen","Estado de la operación en tiempo real"],tickets:["Tickets","Todas las solicitudes, con su estado y tiempos"],portal:["Reportar una novedad","Así lo ve quien reporta: sin usuario, desde el celular"],puntos:["Puntos de servicio","Base maestra mensual: de aquí salen tickets, mapa y hojas de vida"],inv:["Inventario","Vista previa: el material usado en un ticket descuenta aquí"],eco:["Cómo se conecta","Un solo registro de punta a punta"],usuarios:["Usuarios y permisos","Quién entra, qué ve y qué puede cambiar"],mapa:["Mapa de puntos","Dónde está cada punto y cómo va su operación"],cargar:["Cargar base de puntos","Actualiza la base mensual; de ahí salen tickets, mapa y hojas de vida"],hv:["Hojas de vida","Ficha técnica de cada punto de servicio"]};
+const TITLES={cform:["Formulario de novedades","Qué se pregunta al reportar y quién puede usar cada opción"],resumen:["Resumen","Estado de la operación en tiempo real"],tickets:["Tickets","Todas las solicitudes, con su estado y tiempos"],portal:["Reportar una novedad","Quien reporta ya inició sesión: el ticket queda a su nombre"],puntos:["Puntos de servicio","Base maestra mensual: de aquí salen tickets, mapa y hojas de vida"],inv:["Inventario","Vista previa: el material usado en un ticket descuenta aquí"],eco:["Cómo se conecta","Un solo registro de punta a punta"],usuarios:["Usuarios y permisos","Quién entra, qué ve y qué puede cambiar"],mapa:["Mapa de puntos","Dónde está cada punto y cómo va su operación"],cargar:["Cargar base de puntos","Actualiza la base mensual; de ahí salen tickets, mapa y hojas de vida"],hv:["Hojas de vida","Ficha técnica de cada punto de servicio"]};
 
 function renderNav(){
   const ok=views(),ext=me().rol==="Solicitante";
@@ -361,31 +416,38 @@ function renderNav(){
   const soon=(k,l)=>`<button disabled>${ico(k)}${l}<span class="tag">Próximo</span></button>`;
   let n=`<h6>Operación</h6>`+item("resumen","Resumen")+item("tickets","Tickets")+item("portal","Reportar novedad")+item("puntos","Puntos de servicio")+item("mapa","Mapa");
   if(!ext)n+=`<h6>Módulos</h6>`+item("hv","Hojas de vida")+item("inv","Inventario")+soon("inf","Informes")+soon("sal","Salidas de material")+item("eco","Cómo se conecta")+
-    `<h6>Administración</h6>`+(ok.includes("usuarios")?item("usuarios","Usuarios y permisos")+item("cargar","Cargar base de puntos"):`<button disabled>${ico("usuarios")}Usuarios y permisos<span class="tag">Admin</span></button>`);
+    `<h6>Administración</h6>`+(ok.includes("usuarios")?item("usuarios","Usuarios y permisos")+item("cargar","Cargar base de puntos"):`<button disabled>${ico("usuarios")}Usuarios y permisos<span class="tag">Admin</span></button>`)+item("cform","Formulario de novedades");
   $("#nav").innerHTML=n;
   $("#nav").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>{S.view=b.dataset.v;S.sel=null;S.hvSel=null;S.hvEdit=false;render()});
 }
 function renderTools(){
-  const act=S.users.filter(u=>u.est!=="Inactivo");
-  $("#tools").innerHTML=`<div class="field" style="flex-direction:row;align-items:center;gap:8px"><label for="who">Ver como</label>
-   <select id="who" class="inp" style="width:auto;max-width:270px">${act.map(u=>`<option value="${u.id}" ${S.me===u.id?"selected":""}>${esc(u.n)} · ${ROLE_DEF[u.rol].l}</option>`).join("")}</select></div>
-   ${S.view==="usuarios"&&can("usuarios")?'<button class="btn primary" id="inv">Invitar usuario</button>':""}${S.view==="puntos"&&can("cargarbase")?'<button class="btn primary" id="cargar">Cargar base mensual</button>':""}${S.view==="inv"&&lvl("inv")==="editar"?'<button class="btn primary" id="addm">Agregar material</button>':""}
+  const A=actor(),adm=A.rol==="Administrador";
+  const who=S.demo?`<div class="field" style="flex-direction:row;align-items:center;gap:8px"><label for="who">Ver como</label>
+   <select id="who" class="inp" style="width:auto;max-width:270px">${S.users.filter(u=>u.est!=="Inactivo").map(u=>`<option value="${u.id}" ${S.me===u.id?"selected":""}>${esc(u.n)} · ${ROLE_DEF[u.rol].l}</option>`).join("")}</select></div>`:
+   `<div class="field" style="flex-direction:row;align-items:center;gap:8px"><span><b style="font-weight:600">${esc(A.n)}</b> <span class="muted">· ${ROLE_DEF[A.rol].l}</span></span></div>`+
+   (adm?`<div class="field" style="flex-direction:row;align-items:center;gap:8px"><label for="pvw">Vista previa como</label><select id="pvw" class="inp" style="width:auto;max-width:240px"><option value="">Mi cuenta</option>${S.users.filter(u=>u.id!==A.id&&u.est!=="Inactivo").map(u=>`<option value="${u.id}" ${S.prev===u.id?"selected":""}>${esc(u.n)} · ${ROLE_DEF[u.rol].l}</option>`).join("")}</select></div>`:"");
+  $("#tools").innerHTML=who+
+   `${S.view==="usuarios"&&can("usuarios")?'<button class="btn primary" id="inv">Nuevo usuario</button>':""}${S.view==="puntos"&&can("cargarbase")?'<button class="btn primary" id="cargar">Cargar base mensual</button>':""}${S.view==="inv"&&lvl("inv")==="editar"?'<button class="btn primary" id="addm">Agregar material</button>':""}
    <button class="btn" id="theme" aria-label="Cambiar tema claro u oscuro">Tema</button>
-   <button class="btn" id="reset">Cargar ejemplo</button>`;
-  $("#who").onchange=e=>{S.me=e.target.value;S.sel=null;if(!views().includes(S.view))S.view=views()[0];save();render()};
+   ${S.demo?'<button class="btn" id="reset">Cargar ejemplo</button>':'<button class="btn" id="pw">Contraseña</button><button class="btn" id="out">Salir</button>'}`;
+  if($("#who"))$("#who").onchange=e=>{S.me=e.target.value;S.sel=null;if(!views().includes(S.view))S.view=views()[0];save();render()};
+  if($("#pvw"))$("#pvw").onchange=e=>{S.prev=e.target.value||null;S.sel=null;if(!views().includes(S.view))S.view=views()[0];render()};
   if($("#inv"))$("#inv").onclick=()=>modalUser();if($("#cargar"))$("#cargar").onclick=()=>{S.view="cargar";S.sel=null;render()};if($("#addm"))$("#addm").onclick=()=>modalMat();
   $("#theme").onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark"};
-  $("#reset").onclick=()=>confirmBox("Cargar datos de ejemplo","Se reemplazará todo lo actual por los datos ficticios de demostración.","Cargar ejemplo",()=>{S=seed();S.view="resumen";save();render();toast("Datos de ejemplo cargados")});
+  if($("#reset"))$("#reset").onclick=()=>confirmBox("Cargar datos de ejemplo","Se reemplazará todo lo actual por los datos ficticios de demostración.","Cargar ejemplo",()=>{S=seed();S.view="resumen";save();render();toast("Datos de ejemplo cargados")});
+  if($("#pw"))$("#pw").onclick=modalPw;
+  if($("#out"))$("#out").onclick=()=>{logA("cerró sesión");save();logout()};
 }
 function render(){
   if(!views().includes(S.view))S.view=views()[0];
+  if(S.view!=="cform")FD=null;
   renderNav();renderTools();
   const r=me().rol;let [t,s]=TITLES[S.view];
   if(r==="Solicitante"&&S.view==="tickets"){t="Mis tickets";s="Los reportes que has enviado y cómo van"}
   $("#h1").textContent=t;$("#sub").textContent=s;
-  $("#notice").innerHTML=r==="Consulta"?`<div class="notice">Tu rol es de <b>solo lectura</b>: puedes consultar los tickets de tus puntos, pero no modificar nada.</div>`:
-    r==="Solicitante"?`<div class="notice">Puedes reportar novedades y ver el avance de <b>tus</b> tickets. No ves el resto de la operación.</div>`:"";
-  ({resumen:vResumen,tickets:vTickets,portal:vPortal,puntos:vPuntos,inv:vInv,eco:vEco,usuarios:vUsuarios,mapa:vMapa,hv:vHV,cargar:vCargar})[S.view]();
+  $("#notice").innerHTML=(!S.demo&&S.prev&&me()!==actor()?`<div class="notice">Vista previa como <b>${esc(me().n)}</b> (${ROLE_DEF[me().rol].l}). Lo que hagas sigue quedando registrado a nombre de <b>${esc(actor().n)}</b>.</div>`:"")+(r==="Consulta"?`<div class="notice">Tu rol es de <b>solo lectura</b>: puedes consultar los tickets de tus puntos, pero no modificar nada.</div>`:
+    r==="Solicitante"?`<div class="notice">Puedes reportar novedades y ver el avance de <b>tus</b> tickets. No ves el resto de la operación.</div>`:"");
+  ({resumen:vResumen,tickets:vTickets,portal:vPortal,puntos:vPuntos,inv:vInv,eco:vEco,usuarios:vUsuarios,cform:vCform,mapa:vMapa,hv:vHV,cargar:vCargar})[S.view]();
   renderLayer();
   document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{S.view=b.dataset.go;S.sel=null;render()});
 }
@@ -522,69 +584,106 @@ function modalMail(t){
 }
 
 /* ---------- Portal ---------- */
-const MAT_FORM=["CONOS","CAJON MONEDERO","BICICLETERO","GUAYAS PARA BICICLETERO","CANDADO","CERRADURAS","COLOMBINAS","SOLICITUD DE VIDRIOS","SOLICITUD DE POLARIZADOS","SOLICITUD DE SILLAS","CAJILLAS DE SEGURIDAD","SOMBRILLA","BANDERAS","LOCKER","HORNO MICROONDAS","CAJON DE LLAVES","VENTILADOR","CONTADORA DE BILLETES"];
-const TIPO_FORM=[["MATERIALES PARA PUNTO DE SERVICIO","Materiales"],["AVISOS","Avisos"],["MANTENIMIENTO","Mantenimiento"]];
-const AREAS=["Operaciones","Comercial"];
 function vPortal(){
-  const ext=me().rol==="Solicitante",L=ptsVis(),em=/@/.test(me().e||"")?me().e:"";
-  const one=ext&&L.length===1?plabel(L[0]):"";
-  const R=(k,l,req)=>`<span class="req" aria-hidden="true">${req?" *":""}</span>`;
+  const F=S.form,L=ptsVis(),A=actor(),TP=F.tipos.filter(t=>t.on&&(t.roles||[]).includes(me().rol));
   const rd=(name,opts)=>`<div style="display:grid;gap:8px">${opts.map(o=>`<label style="display:flex;gap:8px;align-items:center"><input type="radio" name="${name}" value="${esc(o)}"> ${esc(o)}</label>`).join("")}</div>`;
   const ta=(id,l,req,ph)=>`<div class="field"><label for="${id}">${l}${req?" *":""}</label><textarea id="${id}" class="inp" placeholder="${esc(ph||"Escriba su respuesta")}"></textarea></div>`;
-  $("#view").innerHTML=`<div class="portal card"><div class="brand" style="margin-bottom:6px"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M8 23V13l8 7 8-7v10" stroke="var(--accent-fg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.1" fill="var(--accent-fg)"/></svg><div><b>Reporte de novedades en puntos de servicio</b><small>Recibirás un número de ticket por correo para el seguimiento</small></div></div>
-   <details class="hvs" style="margin-bottom:14px"><summary><span>Antes de enviar: horario y condiciones</span></summary><div class="in" style="font-size:13px"><div><b>Horario de atención de tickets:</b> lunes a viernes de 8:00 a. m. a 5:00 p. m. (días hábiles).</div>
-    <div>Para atender bien tu solicitud, asegúrate de que:<ul style="margin:6px 0 0;padding-left:18px"><li>Esté autorizada por el gerente en el cuadro de control de tickets.</li><li>Se envíe por el canal correcto y esté dentro del alcance permitido.</li><li>Esté priorizada según tipo (bajo, medio o alto).</li><li>Tenga soporte y justificación.</li><li>Se ajuste al presupuesto disponible.</li></ul></div>
-    <div class="muted">Lee las políticas del área de mantenimiento antes de solicitar. Los campos con * son obligatorios.</div></div></details>
+  const head=`<div class="brand" style="margin-bottom:6px"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M8 23V13l8 7 8-7v10" stroke="var(--accent-fg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.1" fill="var(--accent-fg)"/></svg><div><b>Reporte de novedades en puntos de servicio</b><small>Reportando como ${esc(A.n)}</small></div></div>`;
+  if(!TP.length||!L.length){$("#view").innerHTML=`<div class="portal card">${head}<p class="muted" style="margin:0">${!L.length?"No tienes puntos de servicio asignados, o todavía no se ha cargado la base de puntos. Pídele al administrador que te asigne tus puntos.":"Tu rol no tiene tipos de solicitud habilitados. Pídele al administrador que los active en «Formulario de novedades»."}</p></div>`;return}
+  $("#view").innerHTML=`<div class="portal card">${head}
+   <details class="hvs" style="margin-bottom:14px"><summary><span>Antes de enviar: horario y condiciones</span></summary><div class="in" style="font-size:13px"><div><b>Horario de atención de tickets:</b> ${esc(F.horario)}</div>
+    ${F.conds.length?`<div>Para atender bien tu solicitud, asegúrate de que:<ul style="margin:6px 0 0;padding-left:18px">${F.conds.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></div>`:""}
+    <div class="muted">Los campos con * son obligatorios.</div></div></details>
    <form id="fr" class="grid" style="gap:16px" novalidate>
-    <div class="field"><label for="fm">Correo electrónico *</label><input id="fm" class="inp" type="email" placeholder="Escriba una dirección de correo electrónico" value="${esc(em)}"></div>
-    <div class="field"><label for="fs">Nombre completo *</label><input id="fs" class="inp" placeholder="Escriba su respuesta" value="${esc(ext?me().n:me().rol==="Administrador"||true?me().n:"")}"></div>
-    <div class="field"><label for="fp">Confirme el punto de servicio *</label><input id="fp" class="inp" list="dlp" autocomplete="off" placeholder="Escribe para buscar el punto" value="${esc(one)}"><datalist id="dlp">${L.map(p=>`<option value="${esc(plabel(p))}">`).join("")}</datalist></div>
-    <div class="field"><label>Seleccione el tipo de solicitud *</label>${rd("ft",TIPO_FORM.map(x=>x[0]))}</div>
+    <div class="field"><label for="fp">Confirme el punto de servicio *</label><input id="fp" class="inp" list="dlp" autocomplete="off" placeholder="Escribe para buscar el punto" value="${esc(L.length===1?plabel(L[0]):"")}"><datalist id="dlp">${L.map(p=>`<option value="${esc(plabel(p))}">`).join("")}</datalist></div>
+    <div class="field"><label>Seleccione el tipo de solicitud *</label>${rd("ft",TP.map(t=>t.label))}</div>
     <div id="dyn" class="grid" style="gap:16px"></div>
     <div class="field"><label for="ff">Adjunte evidencia de la novedad (máximo 1 archivo)</label><input id="ff" class="inp" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"><span class="hint">Opcional. En esta demostración el archivo no se guarda; solo se registra que hay evidencia.</span></div>
     <p id="err" class="muted" style="margin:0;color:var(--bad)" role="alert"></p>
     <button class="btn primary" type="submit" style="justify-content:center">Enviar reporte</button></form></div>`;
-  const dyn=()=>{const t=(document.querySelector('input[name="ft"]:checked')||{}).value;const d=$("#dyn");
-    if(t==="MANTENIMIENTO")d.innerHTML=ta("n_nov","Describa la novedad presentada, por ejemplo: «Luz del punto de pago no funciona»",true)+ta("n_det","Describa detalladamente su solicitud correspondiente a la novedad.",true);
-    else if(t==="AVISOS")d.innerHTML=`<div class="field"><label for="a_area">Área o departamento solicitante *</label><select id="a_area" class="inp"><option value="">Selecciona la respuesta</option>${AREAS.map(a=>`<option>${a}</option>`).join("")}<option value="__o">Otra</option></select><input id="a_area2" class="inp" placeholder="¿Cuál área?" style="display:none;margin-top:6px"></div>
-      <div class="field"><label>Tipo de público al que va dirigida la pieza *</label>${rd("a_pub",["Cliente interno","Cliente externo"])}</div>
-      <div class="field"><label>Tipo de pieza *</label>${rd("a_pie",["Digital","Impresa"])}</div>
-      <div class="field"><label>Tipo de imágenes a usar en la pieza *</label>${rd("a_img",["Ilustración","Fotografía","Ilustración y fotografía","Solo texto"])}</div>
+  const opt=a=>a.map(x=>`<option>${esc(x)}</option>`).join("");
+  const cur=()=>{const v=(document.querySelector('input[name="ft"]:checked')||{}).value;return TP.find(t=>t.label===v)};
+  const dyn=()=>{const t=cur(),d=$("#dyn");
+    if(!t)d.innerHTML=`<div class="hint">Elige el tipo de solicitud para ver las preguntas que corresponden.</div>`;
+    else if(t.k==="Mantenimiento")d.innerHTML=ta("n_nov","Describa la novedad presentada, por ejemplo: «Luz del punto de pago no funciona»",true)+ta("n_det","Describa detalladamente su solicitud correspondiente a la novedad.",true);
+    else if(t.k==="Avisos")d.innerHTML=`<div class="field"><label for="a_area">Área o departamento solicitante *</label><select id="a_area" class="inp"><option value="">Selecciona la respuesta</option>${opt(F.areas)}</select></div>
+      <div class="field"><label>Tipo de público al que va dirigida la pieza *</label>${rd("a_pub",F.pub)}</div>
+      <div class="field"><label>Tipo de pieza *</label>${rd("a_pie",F.pie)}</div>
+      <div class="field"><label>Tipo de imágenes a usar en la pieza *</label>${rd("a_img",F.img)}</div>
       ${ta("a_t1","Título o tema del aviso",true)}${ta("a_t2","Medidas del aviso",true)}${ta("a_t3","Texto o contenido que debe llevar",true)}${ta("a_t4","Observaciones: cantidad, ubicación y prioridad",true)}`;
-    else if(t==="MATERIALES PARA PUNTO DE SERVICIO")d.innerHTML=`<div class="field"><label for="m_mat">Seleccione el material que requiere en el PS *</label><select id="m_mat" class="inp"><option value="">Selecciona la respuesta</option>${MAT_FORM.map(a=>`<option>${a}</option>`).join("")}<option value="__o">Otro</option></select><input id="m_mat2" class="inp" placeholder="¿Qué material?" style="display:none;margin-top:6px"></div>
-      <div class="field" id="m_med_w" style="display:none"><label for="m_med">Para solicitud de sillas: escriba la medida (altura del puesto de trabajo)</label><input id="m_med" class="inp" placeholder="Ej.: 90 cm"></div>
+    else d.innerHTML=`<div class="field"><label for="m_mat">Seleccione el material que requiere en el PS *</label><select id="m_mat" class="inp"><option value="">Selecciona la respuesta</option>${opt(F.mats.map(m=>m.n))}</select></div>
+      <div class="field" id="m_med_w" style="display:none"><label for="m_med">Medida (por ejemplo, altura del puesto de trabajo)</label><input id="m_med" class="inp" placeholder="Ej.: 90 cm"></div>
       <div class="field"><label for="m_can">Cantidad *</label><input id="m_can" class="inp" type="number" min="0" step="1" inputmode="numeric" placeholder="Ingrese un número"></div>
-      <div class="field"><label for="m_obs">Observaciones</label><input id="m_obs" class="inp" placeholder="Información adicional: medidas de vidrios o polarizados, capacidad de lockers o del cajón de llaves, etc."></div>`;
-    else d.innerHTML=`<div class="hint">Elige el tipo de solicitud para ver las preguntas que corresponden.</div>`;
-    if($("#a_area"))$("#a_area").onchange=e=>{$("#a_area2").style.display=e.target.value==="__o"?"block":"none"};
-    if($("#m_mat"))$("#m_mat").onchange=e=>{$("#m_mat2").style.display=e.target.value==="__o"?"block":"none";$("#m_med_w").style.display=e.target.value==="SOLICITUD DE SILLAS"?"flex":"none"}};
+      <div class="field"><label for="m_obs">Observaciones</label><input id="m_obs" class="inp" placeholder="Información adicional: medidas de vidrios o polarizados, capacidad de lockers, etc."></div>`;
+    if($("#m_mat"))$("#m_mat").onchange=e=>{const m=F.mats.find(x=>x.n===e.target.value);$("#m_med_w").style.display=m&&m.med?"flex":"none"}};
   document.querySelectorAll('input[name="ft"]').forEach(r=>r.onchange=dyn);dyn();
   $("#fr").onsubmit=e=>{e.preventDefault();const err=m=>{$("#err").textContent=m};
     const g=id=>($("#"+id)?$("#"+id).value:"").trim(),rv=n=>(document.querySelector(`input[name="${n}"]:checked`)||{}).value||"";
-    const corr=g("fm"),sol=g("fs"),ppick=ptsVis().find(p=>plabel(p)===$("#fp").value.trim()),tf=rv("ft");
-    if(!/^\S+@\S+\.\S+$/.test(corr))return err("Escribe un correo electrónico válido.");
-    if(!sol)return err("Escribe tu nombre completo.");
-    if(!ppick)return err(ptsVis().length?"Elige un punto de la lista (empieza a escribir su nombre).":"Todavía no hay puntos de servicio. Carga la base de puntos primero.");
-    if(!tf)return err("Selecciona el tipo de solicitud.");
-    const tipo=(TIPO_FORM.find(x=>x[0]===tf)||[])[1];let nov="",det="",ex=[];
+    const ppick=ptsVis().find(p=>plabel(p)===$("#fp").value.trim()),T=cur();
+    if(!ppick)return err("Elige un punto de la lista (empieza a escribir su nombre).");
+    if(!T)return err("Selecciona el tipo de solicitud.");
+    const tipo=T.k;let nov="",det="",ex=[];
     if(tipo==="Mantenimiento"){nov=g("n_nov");det=g("n_det");if(!nov||!det)return err("Describe la novedad y detalla tu solicitud.")}
-    else if(tipo==="Avisos"){const area=g("a_area")==="__o"?g("a_area2"):g("a_area"),pub=rv("a_pub"),pie=rv("a_pie"),img=rv("a_img"),t1=g("a_t1"),t2=g("a_t2"),t3=g("a_t3"),t4=g("a_t4");
+    else if(tipo==="Avisos"){const area=g("a_area"),pub=rv("a_pub"),pie=rv("a_pie"),img=rv("a_img"),t1=g("a_t1"),t2=g("a_t2"),t3=g("a_t3"),t4=g("a_t4");
       if(!area||!pub||!pie||!img||!t1||!t2||!t3||!t4)return err("Completa todas las preguntas del aviso.");
       nov="Aviso: "+t1;det=`Medidas: ${t2}\nTexto: ${t3}\nObservaciones: ${t4}`;ex=[["Área solicitante",area],["Público",pub],["Tipo de pieza",pie],["Imágenes",img]]}
-    else{const mat=g("m_mat")==="__o"?g("m_mat2"):g("m_mat"),can_=g("m_can");
+    else{const mat=g("m_mat"),can_=g("m_can");
       if(!mat||can_===""||isNaN(+can_)||+can_<0)return err("Elige el material e indica la cantidad (un número).");
       nov="Solicitud de materiales: "+mat;const med=g("m_med"),ob=g("m_obs");
       det=`Cantidad: ${can_}${med?" | Medida: "+med:""}${ob?" | Obs: "+ob:""}`;ex=[["Material",mat],["Cantidad",can_]]}
-    const now=Date.now();
-    const t={id:"TK-"+S.next++,created:now,punto:ppick.id,tipo,nov,det,pri:"Medio",est:"Abierto",sol,corr,ex,resp:"Sin asignar",apr:tipo==="Materiales"?"Pendiente":null,foto:!!$("#ff").files.length,mats:[],hist:[{t:now,who:sol,x:"Reportó la novedad desde el portal"},{t:now,who:"Sistema",x:"Correo de acuse enviado a "+corr}],closed:null};
-    S.tickets.unshift(t);save();
+    const now=Date.now(),corr=A.e||"";
+    const t={id:"TK-"+S.next++,created:now,punto:ppick.id,tipo,nov,det,pri:"Medio",est:"Abierto",sol:A.n,solU:A.id,corr,ex,resp:"Sin asignar",apr:tipo==="Materiales"?"Pendiente":null,foto:!!$("#ff").files.length,mats:[],hist:[{t:now,who:A.n,x:"Reportó la novedad desde el portal"}].concat(corr?[{t:now,who:"Sistema",x:"Correo de acuse enviado a "+corr}]:[]),closed:null};
+    S.tickets.unshift(t);logA(`reportó el ticket ${t.id} (${T.label}) en ${ppick.n}`);save();
     $("#view").innerHTML=`<div class="portal card" style="display:flex;flex-direction:column;gap:12px"><span class="chip c-cerrado" style="align-self:start">Recibido</span>
       <h2 style="margin:0;font-size:20px;color:var(--fg)">Tu ticket es <span class="mono">${t.id}</span></h2>
-      <p class="muted" style="margin:0">Te enviamos un correo a ${esc(corr)} con el número y un enlace para ver el estado. El equipo de mantenimiento ya lo tiene en su bandeja.</p>
+      <p class="muted" style="margin:0">Quedó registrado a nombre de ${esc(A.n)}.${corr?" Te enviamos un correo a "+esc(corr)+" con el número.":""} El equipo de mantenimiento ya lo tiene en su bandeja.</p>
       <div class="tools"><button class="btn primary" id="go">Ver en la bandeja de tickets</button><button class="btn" id="again">Reportar otra novedad</button></div></div>`;
     $("#go").onclick=()=>{S.view="tickets";S.sel=t.id;render()};$("#again").onclick=vPortal;
-    if(ext&&!can("ver"))$("#go").style.display="none";
   };
+}
+
+/* ---------- Formulario de novedades (editor del administrador) ---------- */
+function vCform(){
+  if(!FD)FD=JSON.parse(JSON.stringify(S.form));
+  const ed=can("configurar"),R=Object.keys(ROLE_DEF).filter(k=>k!=="Administrador");
+  const dis=ed?"":"disabled";
+  $("#view").innerHTML=`<div class="grid" style="max-width:860px">
+   <div class="card"><h2>Tipos de solicitud</h2><p class="hint" style="margin:0 0 12px">Es la pregunta de las opciones. Puedes cambiar el nombre, ocultar una opción o decidir qué roles pueden usarla. Cada tipo conserva sus preguntas propias (Materiales, Avisos y Mantenimiento). El Administrador siempre puede usarlos.</p>
+    ${FD.tipos.map((t,i)=>`<div style="border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:10px;margin-bottom:10px">
+     <div class="tools" style="flex-wrap:wrap;align-items:center"><div class="field" style="flex:1;min-width:220px"><label for="tl${i}">Nombre que se muestra (tipo: ${esc(t.k)})</label><input id="tl${i}" class="inp" data-tl="${i}" value="${esc(t.label)}" ${dis}></div>
+      <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-ton="${i}" ${t.on?"checked":""} ${dis}> Visible</label></div>
+     <div><div class="muted" style="font-size:12px;margin-bottom:4px">Pueden usarlo:</div><div style="display:flex;flex-wrap:wrap;gap:6px 16px">${R.map(k=>`<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-tr="${i}:${k}" ${(t.roles||[]).includes(k)?"checked":""} ${dis}> ${ROLE_DEF[k].l}</label>`).join("")}</div></div></div>`).join("")}</div>
+   <div class="card"><h2>Materiales para punto de servicio</h2><p class="hint" style="margin:0 0 12px">La lista que ve quien pide materiales. Marca «Pide medida» si, al elegirlo, debe aparecer el campo de medida (como las sillas). Los tickets ya creados no cambian.</p>
+    ${FD.mats.map((m,i)=>`<div class="tools" style="flex-wrap:nowrap;align-items:center;margin-bottom:6px"><input class="inp" data-mn="${i}" value="${esc(m.n)}" aria-label="Material ${i+1}" ${dis}><label style="display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" data-mm="${i}" ${m.med?"checked":""} ${dis}> Pide medida</label><button class="btn sm" data-md="${i}" ${dis}>Quitar</button></div>`).join("")}
+    <div class="tools" style="margin-top:8px"><input id="mnew" class="inp" placeholder="Nuevo material" aria-label="Nuevo material" ${dis}><button class="btn" id="madd" ${dis}>Agregar</button></div></div>
+   <div class="card"><h2>Opciones de los avisos</h2><p class="hint" style="margin:0 0 12px">Una opción por línea.</p><div class="grid two">
+    ${[["areas","Áreas o departamentos solicitantes"],["pub","Tipos de público"],["pie","Tipos de pieza"],["img","Tipos de imágenes"]].map(([k,l])=>`<div class="field"><label for="l_${k}">${l}</label><textarea id="l_${k}" class="inp" data-ls="${k}" rows="4" ${dis}>${esc(FD[k].join("\n"))}</textarea></div>`).join("")}</div></div>
+   <div class="card"><h2>Horario y condiciones</h2><div class="field"><label for="hor">Horario de atención</label><input id="hor" class="inp" value="${esc(FD.horario)}" ${dis}></div>
+    <div class="field" style="margin-top:10px"><label for="con">Condiciones (una por línea)</label><textarea id="con" class="inp" rows="5" ${dis}>${esc(FD.conds.join("\n"))}</textarea></div></div>
+   <p id="cferr" class="muted" style="margin:0;color:var(--bad)" role="alert"></p>
+   ${ed?'<div class="tools"><button class="btn primary" id="cfs">Guardar cambios</button><button class="btn" id="cfd">Descartar cambios</button><button class="btn" id="cfv">Ver el formulario</button></div>':""}</div>`;
+  const V=$("#view");
+  V.querySelectorAll("[data-tl]").forEach(i=>i.oninput=()=>{FD.tipos[+i.dataset.tl].label=i.value});
+  V.querySelectorAll("[data-ton]").forEach(i=>i.onchange=()=>{FD.tipos[+i.dataset.ton].on=i.checked});
+  V.querySelectorAll("[data-tr]").forEach(i=>i.onchange=()=>{const [n,k]=i.dataset.tr.split(":"),t=FD.tipos[+n];t.roles=t.roles||[];const x=t.roles.indexOf(k);if(i.checked&&x<0)t.roles.push(k);if(!i.checked&&x>=0)t.roles.splice(x,1)});
+  V.querySelectorAll("[data-mn]").forEach(i=>i.oninput=()=>{FD.mats[+i.dataset.mn].n=i.value});
+  V.querySelectorAll("[data-mm]").forEach(i=>i.onchange=()=>{FD.mats[+i.dataset.mm].med=i.checked});
+  V.querySelectorAll("[data-md]").forEach(b=>b.onclick=()=>{FD.mats.splice(+b.dataset.md,1);const y=scrollY;vCform();scrollTo(0,y)});
+  V.querySelectorAll("[data-ls]").forEach(i=>i.oninput=()=>{FD[i.dataset.ls]=i.value.split("\n").map(s=>s.trim()).filter(Boolean)});
+  $("#hor").oninput=e=>{FD.horario=e.target.value};$("#con").oninput=e=>{FD.conds=e.target.value.split("\n").map(s=>s.trim()).filter(Boolean)};
+  if($("#madd"))$("#madd").onclick=()=>{const v=$("#mnew").value.trim();if(!v)return;if(FD.mats.some(m=>m.n.toLowerCase()===v.toLowerCase())){$("#cferr").textContent="Ese material ya está en la lista.";return}FD.mats.push({n:v,med:false});const y=scrollY;vCform();scrollTo(0,y);$("#mnew").focus()};
+  if($("#cfs"))$("#cfs").onclick=()=>{const er=m=>{$("#cferr").textContent=m};
+    FD.mats.forEach(m=>m.n=m.n.trim());
+    if(!FD.tipos.some(t=>t.on))return er("Deja al menos un tipo de solicitud visible.");
+    if(FD.tipos.some(t=>!t.label.trim()))return er("Cada tipo de solicitud necesita un nombre.");
+    if(new Set(FD.tipos.map(t=>t.label.trim().toLowerCase())).size<FD.tipos.length)return er("Los nombres de los tipos no pueden repetirse.");
+    if(FD.mats.some(m=>!m.n))return er("Hay un material sin nombre.");
+    if(new Set(FD.mats.map(m=>m.n.toLowerCase())).size<FD.mats.length)return er("Hay materiales repetidos.");
+    if(!FD.areas.length||!FD.pub.length||!FD.pie.length||!FD.img.length)return er("Cada lista de opciones de avisos necesita al menos una opción.");
+    FD.tipos.forEach(t=>t.label=t.label.trim());
+    S.form=JSON.parse(JSON.stringify(FD));logA("modificó el formulario de novedades");save();FD=null;vCform();toast("Formulario actualizado")};
+  if($("#cfd"))$("#cfd").onclick=()=>{FD=null;vCform();toast("Cambios descartados")};
+  if($("#cfv"))$("#cfv").onclick=()=>{S.view="portal";render()};
 }
 
 /* ---------- Puntos ---------- */
@@ -598,7 +697,7 @@ function modalUbicar(p){
    "Guardar ubicación",()=>{
     const la=$("#pla").value.trim(),lo=$("#plo").value.trim();let lat=null,lng=null;
     if(la||lo){lat=parseFloat(la.replace(",","."));lng=parseFloat(lo.replace(",","."));if(isNaN(lat)||isNaN(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return "La latitud y la longitud deben ser números válidos (ej.: 4.6597 y -74.0600)."}
-    p.dir=$("#pd").value.trim();p.lat=lat;p.lng=lng;save();render();toast("Ubicación guardada")});
+    p.dir=$("#pd").value.trim();p.lat=lat;p.lng=lng;logA(`guardó la ubicación de ${p.n}`);save();render();toast("Ubicación guardada")});
   $("#pick").onclick=()=>{closeModal();PLACE=p.id;S.view="mapa";render()};
   $("#geo").onclick=async()=>{const q=[$("#pd").value.trim(),p.c].filter(Boolean).join(", "),m=$("#geomsg");
     if(!$("#pd").value.trim()){m.textContent="Escribe la dirección.";return}
@@ -739,7 +838,7 @@ function modalMat(i){
     if(S.inv.some(x=>x!==i&&x.n.toLowerCase()===n.toLowerCase()))return "Ya existe un material con ese nombre.";
     const o={n,u:$("#mu").value,s,min,p:pr};
     if(i)Object.assign(i,o);else S.inv.push({id:"i"+Date.now().toString(36),...o});
-    save();render();toast(i?"Material actualizado":"Material agregado")});
+    logA(`${i?"actualizó":"agregó"} un material del inventario`);save();render();toast(i?"Material actualizado":"Material agregado")});
 }
 function vInv(){
   const adm=lvl("inv")==="editar";
@@ -747,7 +846,7 @@ function vInv(){
    <div class="card"><h2>Movimientos de esta sesión</h2>${S.mov.length?`<ul class="feed">${S.mov.slice(0,8).map(m=>{const it=S.inv.find(x=>x.id===m.i);return it?`<li><span class="dot"></span><div>${-m.q} ${it.u} · ${esc(it.n)}<div class="muted" style="font-size:12px">Por el ticket <span class="mono">${m.tk}</span> · ${ftime(m.t)}</div></div></li>`:""}).join("")}</ul>`:`<div class="muted">Abre un ticket, registra un material usado y verás aquí el descuento al instante.</div>`}</div></div>`;
   document.querySelectorAll("[data-em]").forEach(b=>b.onclick=()=>modalMat(S.inv.find(x=>x.id===b.dataset.em)));
   document.querySelectorAll("[data-dm]").forEach(b=>b.onclick=()=>{const i=S.inv.find(x=>x.id===b.dataset.dm);
-    confirmBox("Eliminar material",`Se eliminará <b>${esc(i.n)}</b> del inventario.`,"Eliminar",()=>{S.inv=S.inv.filter(x=>x!==i);S.mov=S.mov.filter(m=>m.i!==i.id);save();render();toast("Material eliminado")})});
+    confirmBox("Eliminar material",`Se eliminará <b>${esc(i.n)}</b> del inventario.`,"Eliminar",()=>{S.inv=S.inv.filter(x=>x!==i);S.mov=S.mov.filter(m=>m.i!==i.id);logA(`eliminó el material ${i.n} del inventario`);save();render();toast("Material eliminado")})});
 }
 
 /* ---------- Mapa ---------- */
@@ -872,7 +971,7 @@ function vHVForm(){
    <details class="hvs"><summary><span>Registro fotográfico</span></summary><div class="in"><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">${S.hvTpl.fotos.map(f=>img("f:"+f.id,f.t,(d.fotos||{})[f.id])).join("")}</div></div></details>
    <details class="hvs"><summary><span>Tickets de este punto (automático)</span><span class="muted mono">${tks.length}</span></summary><div class="in">${tks.length?`<div class="tbl-wrap"><table style="min-width:520px"><thead><tr><th>Ticket</th><th>Novedad</th><th>Estado</th><th>Antigüedad</th></tr></thead><tbody>${tks.map(t=>`<tr class="row" data-ot="${t.id}" tabindex="0"><td class="mono">${t.id}</td><td>${esc(t.nov)}</td><td>${chipE(t.est)}</td><td class="muted">${ago(t.created)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="muted">Este punto aún no tiene tickets. Los que se reporten aparecerán aquí, ligados a su hoja de vida.</div>`}</div></details>
   </div>`;
-  const root=$("#view"),touch=()=>{const x=hvGet(id,true);x.upd=Date.now();hvSoon()};
+  const root=$("#view"),touch=()=>{const x=hvGet(id,true);x.upd=Date.now();x.by=meName();if(!HVL.has(id)){HVL.add(id);logA(`editó la hoja de vida de ${(pt(id)||{}).n||id}`)}hvSoon()};
   const prog=()=>{const t=hvTotal(),n=hvDone(id),pc=t?Math.round(n/t*100):0;$("#hvpct").textContent=`${n}/${t} · ${pc}%`;$("#hvbar").style.width=pc+"%";
     S.hvTpl.secs.forEach(s=>{const e=root.querySelector(`[data-sc="${s.id}"]`);if(e)e.textContent=s.items.filter(x=>hvGet(id).it[x.id]&&hvGet(id).it[x.id].e).length+"/"+s.items.length})};
   const onEdit=e=>{if(!ed)return;const t=e.target,x=hvGet(id,true);
@@ -938,18 +1037,21 @@ function vUsuarios(){
   const RK=Object.keys(ROLE_DEF),EC={Activo:"c-cerrado",Inactivo:"c-noprocede",Pendiente:"c-espera"};
   $("#view").innerHTML=`<div class="grid">
    <div class="tbl-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Alcance y módulos</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead><tbody>${S.users.map(u=>`<tr>
-    <td><b style="font-weight:600">${esc(u.n)}</b><div class="muted" style="font-size:12px">${esc(u.e||"Sin correo registrado")}</div></td>
+    <td><b style="font-weight:600">${esc(u.n)}</b><div class="muted" style="font-size:12px">${u.us?"Usuario: "+esc(u.us):"Sin usuario (no puede ingresar)"}${u.e?" · "+esc(u.e):""}</div></td>
     <td><select class="inp rsel" style="min-width:230px" data-u="${u.id}" aria-label="Rol de ${esc(u.n)}" ${u.id===S.me?'disabled title="No puedes cambiar tu propio rol"':""}>${RK.map(k=>`<option value="${k}" ${u.rol===k?"selected":""}>${ROLE_DEF[k].l}</option>`).join("")}</select></td>
     <td style="max-width:260px">${esc(alcance(u))}<div class="muted" style="font-size:12px">Hoja de vida: ${NIVEL[mods(u).hv]} · Inventario: ${NIVEL[mods(u).inv]}</div></td><td><span class="chip ${EC[u.est]}">${u.est}</span></td><td class="muted">${esc(u.acc)}</td>
     <td><div class="tools" style="flex-wrap:nowrap"><button class="btn sm" data-eu="${u.id}">Editar</button>${u.id===S.me?"":`<button class="btn sm" data-t="${u.id}">${u.est==="Inactivo"?"Activar":"Desactivar"}</button><button class="btn sm" data-du="${u.id}">Eliminar</button>`}</div></td></tr>`).join("")}</tbody></table></div>
    <div class="grid two">
-    <div class="card"><h2>Qué puede hacer cada rol</h2><div class="tbl-wrap"><table class="mx" style="min-width:520px"><thead><tr><th>Acción</th>${RK.map(k=>`<th>${ROLE_DEF[k].l.split(" (")[0]}</th>`).join("")}</tr></thead><tbody>${ACCIONES.map(([a,l])=>`<tr><td>${l}</td>${RK.map(k=>`<td>${ROLE_DEF[k].can.includes(a)?'<span class="yes" aria-label="Sí">Sí</span>':'<span class="no" aria-label="No">—</span>'}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
-     <p class="hint" style="margin:12px 0 0">Cada usuario además tiene un alcance: solo ve los puntos que se le asignan. Y el administrador decide, usuario por usuario, quién accede a Hojas de vida e Inventario (sin acceso, solo ver, ver y editar). Un cliente, por ejemplo, ve únicamente sus sedes. En la versión real estos permisos se aplican en el servidor, no solo en pantalla.</p></div>
+    <div class="card"><h2>Qué puede hacer cada rol</h2><div class="tbl-wrap"><table class="mx" style="min-width:520px"><thead><tr><th>Acción</th>${RK.map(k=>`<th>${ROLE_DEF[k].l.split(" (")[0]}</th>`).join("")}</tr></thead><tbody>${ACCIONES.map(([a,l])=>`<tr><td>${l}</td>${RK.map(k=>`<td style="text-align:center"><input type="checkbox" class="rc" data-r="${k}" data-a="${a}" aria-label="${esc(l)} — ${ROLE_DEF[k].l}" ${roleCan(k).includes(a)?"checked":""} ${k==="Administrador"||!can("usuarios")?"disabled":""}></td>`).join("")}</tr>`).join("")}</tbody></table></div>
+     <div class="tools" style="margin-top:10px"><button class="btn sm" id="rrst">Restaurar permisos por defecto</button></div><p class="hint" style="margin:12px 0 0">Marca o desmarca para cambiar lo que puede hacer cada rol. El Administrador siempre tiene todo. Para dar o quitar solo el permiso de reportar a una persona, usa «Puede reportar novedades» al editarla. Cada usuario además tiene un alcance: solo ve los puntos que se le asignan. Y el administrador decide, usuario por usuario, quién accede a Hojas de vida e Inventario (sin acceso, solo ver, ver y editar). Un cliente, por ejemplo, ve únicamente sus sedes. En la versión real estos permisos se aplican en el servidor, no solo en pantalla.</p></div>
     <div class="grid">
-     <div class="card"><h2>Registro de cambios de acceso</h2>${S.audit.length?`<ul class="feed">${S.audit.slice(0,8).map(a=>`<li><span class="dot"></span><div>${esc(a.x)}<div class="muted" style="font-size:12px">${ftime(a.t)}</div></div></li>`).join("")}</ul>`:`<div class="muted">Aquí queda quién cambió roles o accesos.</div>`}</div>
+     <div class="card"><h2>Registro de actividad</h2>${S.audit.length?`<ul class="feed">${S.audit.slice(0,15).map(a=>`<li><span class="dot"></span><div>${esc(!a.who||a.x.startsWith(a.who)?a.x:a.who+" "+a.x)}<div class="muted" style="font-size:12px">${ftime(a.t)}</div></div></li>`).join("")}</ul>`:`<div class="muted">Aquí queda quién hizo cada cambio y cuándo.</div>`}</div>
      ${can("configurar")?`<div class="card"><h2>Datos de la cuenta</h2><p class="hint" style="margin:0 0 12px">Para preparar la herramienta para un cliente nuevo. Estas acciones no se pueden deshacer.</p><div class="tools"><button class="btn" id="d1">Borrar todos los tickets</button><button class="btn bad" id="d2">Empezar vacío</button><button class="btn" id="d3">Cargar datos de ejemplo</button></div></div>`:""}
     </div>
    </div></div>`;
+  document.querySelectorAll(".rc").forEach(c=>c.onchange=()=>{const k=c.dataset.r,a=c.dataset.a;S.roles=S.roles||{};const cur=roleCan(k).slice();const i=cur.indexOf(a);if(c.checked&&i<0)cur.push(a);if(!c.checked&&i>=0)cur.splice(i,1);S.roles[k]=cur;
+    logA(`${c.checked?"dio":"quitó"} el permiso «${(ACCIONES.find(x=>x[0]===a)||[])[1]}» al rol ${ROLE_DEF[k].l}`);save();toast("Permiso actualizado")});
+  if($("#rrst"))$("#rrst").onclick=()=>confirmBox("Restaurar permisos","Los permisos de todos los roles vuelven a los valores por defecto.","Restaurar",()=>{S.roles=null;logA("restauró los permisos por defecto de los roles");save();vUsuarios();toast("Permisos restaurados")});
   document.querySelectorAll(".rsel").forEach(s=>s.onchange=e=>{const u=S.users.find(x=>x.id===s.dataset.u),old=u.rol;u.rol=e.target.value;delete u.mods;if(u.rol==="Administrador")u.pts="all";
     logA(`${meName()} cambió el rol de ${u.n}: ${ROLE_DEF[old].l} → ${ROLE_DEF[u.rol].l}`);save();renderTools();vUsuarios();toast("Rol actualizado")});
   document.querySelectorAll("[data-eu]").forEach(b=>b.onclick=()=>modalUser(S.users.find(x=>x.id===b.dataset.eu)));
@@ -960,40 +1062,55 @@ function vUsuarios(){
       S.users=S.users.filter(x=>x!==u);logA(`${meName()} eliminó a ${u.n}`);save();renderTools();vUsuarios();toast("Usuario eliminado")})});
   if($("#d1"))$("#d1").onclick=()=>confirmBox("Borrar todos los tickets",`Se borrarán <b>${S.tickets.length}</b> tickets con su historial. Los materiales registrados vuelven al inventario. Los puntos, usuarios e inventario se conservan.`,"Borrar tickets",()=>{
     S.tickets.forEach(t=>t.mats.forEach(m=>{const it=S.inv.find(i=>i.id===m.i);if(it)it.s+=m.q}));S.tickets=[];S.mov=[];S.sel=null;save();render();toast("Tickets borrados")});
-  if($("#d2"))$("#d2").onclick=()=>confirmBox("Empezar vacío","Se borrará todo: tickets, puntos de servicio, inventario y usuarios. Quedará solo un Administrador, que podrás renombrar con «Editar».","Borrar todo y empezar vacío",()=>{
-    S=blank();S.view="resumen";save();render();toast("Cuenta vacía lista para configurar")});
+  if($("#d2"))$("#d2").onclick=()=>confirmBox("Empezar vacío","Se borrará todo: tickets, puntos de servicio, inventario, usuarios y contraseñas. Quedará solo un Administrador y tendrás que crear de nuevo su usuario y contraseña.","Borrar todo y empezar vacío",()=>{
+    S=blank();S.view="resumen";save();sset(null);$("#view").innerHTML="";$("#tools").innerHTML="";$("#nav").innerHTML="";showAuth()});
   if($("#d3"))$("#d3").onclick=()=>confirmBox("Cargar datos de ejemplo","Se reemplazará todo lo actual por los datos ficticios de la demostración.","Cargar ejemplo",()=>{
     S=seed();S.view="resumen";save();render();toast("Datos de ejemplo cargados")});
 }
 function modalUser(u){
   const self=u&&u.id===S.me,sc=u?u.pts:"all",mode0=sc==="all"?"all":Array.isArray(sc)?"pts":"zonas",act=PUNTOS.filter(p=>!p.baja);
   const zs=[...new Set(act.map(p=>p.zona).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
-  formModal(u?"Editar usuario":"Invitar usuario",
+  formModal(u?"Editar usuario":"Nuevo usuario",
    `<div class="field"><label for="in">Nombre</label><input id="in" class="inp" value="${esc(u?u.n:"")}" placeholder="Nombre y apellido"></div>
-    <div class="field"><label for="ie">Correo</label><input id="ie" class="inp" type="email" value="${esc(u?u.e:"")}" placeholder="persona@empresa.com"></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px"><div class="field"><label for="iu">Usuario (para ingresar)</label><input id="iu" class="inp" value="${esc(u?u.us||"":"")}" placeholder="nombre.apellido" autocomplete="off"></div>
+    <div class="field"><label for="ipw">${u?"Nueva contraseña":"Contraseña temporal"}</label><input id="ipw" class="inp" type="text" placeholder="${u?(u.ph?"Vacío = no cambiarla":"Mínimo 8 caracteres"):"Mínimo 8 caracteres"}" autocomplete="off"><span class="hint">${u?"":"La persona la cambia al ingresar por primera vez."}</span></div></div>
+    <div class="field"><label for="ie">Correo (opcional)</label><input id="ie" class="inp" type="email" value="${esc(u?u.e:"")}" placeholder="persona@empresa.com"></div>
+    <div class="field"><label for="irep">Puede reportar novedades</label><select id="irep" class="inp" ${u&&u.rol==="Administrador"?"disabled":""}>${[["rol","Según su rol"],["si","Sí, siempre"],["no","No"]].map(([v,l])=>`<option value="${v}" ${(u&&u.rep||"rol")===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="field"><label for="ir">Rol</label><select id="ir" class="inp" ${self?"disabled":""}>${Object.keys(ROLE_DEF).map(k=>`<option value="${k}" ${(u?u.rol:"Consulta")===k?"selected":""}>${ROLE_DEF[k].l}</option>`).join("")}</select><span class="hint" id="ird">${ROLE_DEF[u?u.rol:"Consulta"].d}</span></div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">${[["hv","Hojas de vida"],["inv","Inventario"]].map(([k,l])=>`<div class="field"><label for="m_${k}">Acceso a ${l}</label><select id="m_${k}" class="inp" ${self||(u&&u.rol==="Administrador")?"disabled":""}>${Object.keys(NIVEL).map(v=>`<option value="${v}" ${mods(u||{rol:"Consulta"})[k]===v?"selected":""}>${NIVEL[v]}</option>`).join("")}</select></div>`).join("")}</div>
     <div class="field"><label for="sm">Puntos que podrá ver</label><select id="sm" class="inp"><option value="all" ${mode0==="all"?"selected":""}>Todos los puntos</option><option value="zonas" ${mode0==="zonas"?"selected":""} ${zs.length?"":"disabled"}>Por zonas</option><option value="pts" ${mode0==="pts"?"selected":""} ${act.length?"":"disabled"}>Puntos específicos</option></select>
      <div id="sz" style="display:none;gap:6px;padding:4px">${zs.map(z=>`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="zc" value="${esc(z)}" ${mode0==="zonas"&&(sc.zonas||[]).includes(z)?"checked":""}> ${esc(z)}</label>`).join("")}</div>
      <div id="sp" style="display:none;flex-direction:column;gap:8px"><input id="spq" class="inp" type="search" placeholder="Buscar punto" aria-label="Buscar punto"><div style="max-height:200px;overflow:auto;display:grid;gap:6px;padding:4px;border:1px solid var(--line);border-radius:8px">${act.map(p=>`<label class="ipl" data-t="${esc((p.n+" "+p.c+" "+(p.zona||"")).toLowerCase())}" style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="ip" value="${p.id}" ${mode0==="pts"&&sc.includes(p.id)?"checked":""}> ${esc(p.n)} <span class="muted">· ${esc(p.c)}</span></label>`).join("")}</div></div>
      <span class="hint">Los administradores siempre ven todos los puntos.</span></div>`,
-   u?"Guardar cambios":"Enviar invitación",()=>{
+   u?"Guardar cambios":"Crear usuario",()=>{
     const n=$("#in").value.trim(),c=$("#ie").value.trim();
-    if(!n||!/^\S+@\S+\.\S+$/.test(c))return "Escribe el nombre y un correo válido.";
-    if(S.users.some(x=>x!==u&&x.e.toLowerCase()===c.toLowerCase()))return "Ya existe un usuario con ese correo.";
+    const us=$("#iu").value.trim().toLowerCase(),pw=$("#ipw").value,rep=$("#irep").value;
+    if(!n)return "Escribe el nombre.";
+    if(!/^[a-z0-9._-]{3,30}$/.test(us))return "Usuario: 3 a 30 letras minúsculas, números, punto, guion o guion bajo, sin espacios.";
+    if(c&&!/^\S+@\S+\.\S+$/.test(c))return "El correo no es válido.";
+    if(S.users.some(x=>x!==u&&(x.us||"").toLowerCase()===us))return "Ese usuario ya existe.";
+    if(c&&S.users.some(x=>x!==u&&(x.e||"").toLowerCase()===c.toLowerCase()))return "Ya existe un usuario con ese correo.";
+    if((!u||pw)&&pw.length<8)return "La contraseña debe tener mínimo 8 caracteres.";
     const rol=self?u.rol:$("#ir").value;let pts="all";const sm=$("#sm").value;
     if(rol!=="Administrador"){
       if(sm==="zonas"){const z=[...document.querySelectorAll(".zc:checked")].map(x=>x.value);if(!z.length)return "Elige al menos una zona.";pts={zonas:z}}
       else if(sm==="pts"){pts=[...document.querySelectorAll(".ip:checked")].map(x=>x.value);if(!pts.length)return "Elige al menos un punto."}}
     const mo=rol==="Administrador"?undefined:{hv:$("#m_hv").value,inv:$("#m_inv").value};
-    if(u){Object.assign(u,{n,e:c,rol,pts,mods:mo});logA(`${meName()} editó a ${n} (${ROLE_DEF[rol].l})`)}
-    else{S.users.push({id:"u"+Date.now(),n,e:c,rol,pts,mods:mo,est:"Pendiente",acc:"—"});logA(`${meName()} invitó a ${n} como ${ROLE_DEF[rol].l}`)}
-    save();renderTools();vUsuarios();toast(u?"Usuario actualizado":"Invitación registrada (en la versión real sale por correo)")});
+    let T=u;
+    if(u){Object.assign(u,{n,e:c,us,rol,pts,mods:mo,rep});logA(`${meName()} editó a ${n} (${ROLE_DEF[rol].l})`)}
+    else{T={id:"u"+Date.now(),n,e:c,us,rol,pts,mods:mo,rep,est:"Pendiente",acc:"—"};S.users.push(T);logA(`${meName()} creó el usuario ${n} (${ROLE_DEF[rol].l})`)}
+    const fin=()=>{save();renderTools();vUsuarios();toast(u?"Usuario actualizado":"Usuario creado: entrégale su usuario y contraseña temporal")};
+    if(pw)setPw(T,pw,T.id!==S.me).then(()=>{logA(`${meName()} asignó una contraseña a ${n}`);fin()});else fin()});
   const sync=()=>{const m=$("#sm").value;$("#sz").style.display=m==="zonas"?"grid":"none";$("#sp").style.display=m==="pts"?"flex":"none"};
   $("#sm").onchange=sync;sync();
   $("#spq").oninput=e=>{const q=e.target.value.trim().toLowerCase();document.querySelectorAll(".ipl").forEach(l=>l.style.display=!q||l.dataset.t.includes(q)?"flex":"none")};
   const ir=$("#ir");if(ir)ir.onchange=e=>{const r=e.target.value;$("#ird").textContent=ROLE_DEF[r].d;const d=mods({rol:r});["hv","inv"].forEach(k=>{$("#m_"+k).value=d[k];$("#m_"+k).disabled=r==="Administrador"})};
 }
-if(location.hash==="#cargar-base"&&can("cargarbase"))S.view="cargar";
-render();
+if(location.hash==="#cargar-base")S.view="cargar";
+(function boot(){
+  if(S.demo){render();return}
+  const u=S.users.find(x=>x.id===sget()&&x.ph&&x.est!=="Inactivo");
+  if(u){S.me=u.id;S.prev=null;if(u.must){showAuth(u.id);return}render();return}
+  showAuth();
+})();
 </script>
