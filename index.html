@@ -585,7 +585,7 @@ function modalMail(t){
 
 /* ---------- Portal ---------- */
 function vPortal(){
-  const F=S.form,L=ptsVis(),A=actor(),TP=F.tipos.filter(t=>t.on&&(t.roles||[]).includes(me().rol));
+  const F=S.form,L=ptsVis(),A=actor(),TP=F.tipos.filter(t=>t.on&&(me().rol==="Administrador"||(t.roles||[]).includes(me().rol)));
   const rd=(name,opts)=>`<div style="display:grid;gap:8px">${opts.map(o=>`<label style="display:flex;gap:8px;align-items:center"><input type="radio" name="${name}" value="${esc(o)}"> ${esc(o)}</label>`).join("")}</div>`;
   const ta=(id,l,req,ph)=>`<div class="field"><label for="${id}">${l}${req?" *":""}</label><textarea id="${id}" class="inp" placeholder="${esc(ph||"Escriba su respuesta")}"></textarea></div>`;
   const head=`<div class="brand" style="margin-bottom:6px"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M8 23V13l8 7 8-7v10" stroke="var(--accent-fg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.1" fill="var(--accent-fg)"/></svg><div><b>Reporte de novedades en puntos de servicio</b><small>Reportando como ${esc(A.n)}</small></div></div>`;
