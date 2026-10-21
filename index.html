@@ -157,6 +157,18 @@ td.mono{white-space:nowrap}
 .mx th:not(:first-child),.mx td:not(:first-child){text-align:center}
 select:disabled,input:disabled,input[readonly]{opacity:.65;cursor:not-allowed}
 .hint{font-size:12px;color:var(--muted)}
+.pin{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:600 12px var(--font-mono);color:#fff;background:var(--accent);border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+.pin.bad{background:#b3261e}.pin.ok{background:#1d7a4b}.pin.warn{background:#8f5f00}
+#map{height:540px;position:relative;z-index:0;isolation:isolate;background:var(--surface-2)}
+.bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;min-width:90px}.bar i{display:block;height:100%;background:var(--accent)}
+details.hvs{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+details.hvs>summary{cursor:pointer;padding:12px 16px;font-weight:600;display:flex;justify-content:space-between;gap:10px;list-style:none}
+details.hvs>summary::-webkit-details-marker{display:none}
+details.hvs>.in{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.hvs td .inp,.hvs td select{padding:5px 7px;font-size:13px}
+.imgbox{border:1px dashed var(--line-strong);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.imgbox img{max-width:100%;max-height:220px;object-fit:contain;border-radius:6px}
+@media print{.side,#tools,#notice,.noprint,.toast{display:none!important}body{background:#fff}.app,.layout{display:block!important}details.hvs{break-inside:avoid}}
 </style>
 
 <div class="shell">
@@ -187,19 +199,37 @@ const ECLASS={"Abierto":"c-abierto","En espera":"c-espera","En ejecución":"c-ej
 const ECOLOR={"Abierto":"var(--info)","En espera":"var(--warn)","En ejecución":"var(--accent)","Cerrado":"var(--ok)","No procede":"var(--line-strong)"};
 const SLA={"Alto":2,"Medio":5,"Bajo":10};
 const TIPOS=["Mantenimiento","Materiales","Avisos"];
-const PUNTOS=[
- {id:"p1",n:"Edificio Alameda",c:"Bogotá"},{id:"p2",n:"Parqueadero Calle 93",c:"Bogotá"},
- {id:"p3",n:"Clínica Los Cedros",c:"Bogotá"},{id:"p4",n:"Centro Comercial Terraza",c:"Medellín"},
- {id:"p5",n:"Torre Norte",c:"Bogotá"},{id:"p6",n:"Conjunto Las Acacias",c:"Cali"},
- {id:"p7",n:"Bodega Fontibón",c:"Bogotá"},{id:"p8",n:"Colegio San Rafael",c:"Bogotá"}];
-const GESTORES=["Camila Ortiz","Julián Pardo","Sin asignar"];
+const PUNTOS0=[
+ {id:"p1",n:"Edificio Alameda",c:"Bogotá",dir:"Calle 72 # 10-34 (ejemplo)",cc:"CC-101",lat:4.6597,lng:-74.0600},{id:"p2",n:"Parqueadero Calle 93",c:"Bogotá",dir:"Calle 93 # 13-20 (ejemplo)",cc:"CC-102",lat:4.6769,lng:-74.0485},
+ {id:"p3",n:"Clínica Los Cedros",c:"Bogotá",dir:"Cra 19 # 135-40 (ejemplo)",cc:"CC-103",lat:4.7010,lng:-74.0405},{id:"p4",n:"Centro Comercial Terraza",c:"Medellín",dir:"Cra 43A # 1-50 (ejemplo)",cc:"CC-201",lat:6.2108,lng:-75.5710},
+ {id:"p5",n:"Torre Norte",c:"Bogotá",dir:"Autopista Norte # 150-10 (ejemplo)",cc:"CC-104",lat:4.7240,lng:-74.0350},{id:"p6",n:"Conjunto Las Acacias",c:"Cali",dir:"Cra 100 # 14-20 (ejemplo)",cc:"CC-301",lat:3.4372,lng:-76.5322},
+ {id:"p7",n:"Bodega Fontibón",c:"Bogotá",dir:"Calle 17 # 99-10 (ejemplo)",cc:"CC-105",lat:4.6700,lng:-74.1450},{id:"p8",n:"Colegio San Rafael",c:"Bogotá",dir:"Calle 53 # 24-15 (ejemplo)",cc:"CC-106",lat:4.6290,lng:-74.0650}];
+const HV_SEC0=[
+["Medidas",["Área de parqueadero","Medidas de acceso al parqueadero","Espacio de parqueo individual / medidas","Espacios de parqueo vehicular (cantidad)","Espacios de parqueo para personas con discapacidad (cantidad)","Espacios de parqueo de motos (cantidad)","Espacios de bicicletas (cantidad)","Espacio de movilidad vehicular / medidas","Topellantas"]],
+["Avisos",["Avisos de horarios","Avisos luminosos / cantidad / medidas","Avisos de responsabilidad","Avisos de tarifas de vehículos","Avisos de tarifas de motos","Aviso parquear en reversa","Aviso de convenios","Aviso encender luces","Aviso de altura máxima","Aviso espacio libre de humo","Aviso no hay cupo","Aviso de bicicletas","Pieza informativa","Pieza informativa luminosa","Señalización de emergencia","Otros avisos"]],
+["Baños",["Piso del baño","Muros del baño","Sanitarios","Orinal","Lavamanos","Espejos"]],
+["Pintura",["Pintura de paredes exteriores","Pintura de paredes interiores","Demarcación de pisos","Demarcación de cupos para personas con discapacidad","Pintura de cebras","Pintura de prohibido parquear","Flechas"]],
+["Pisos",["Piso de accesos y salidas (piedra / asfalto / concreto)","Piso dentro del punto (piedra / asfalto / concreto / adoquín)","Piso exterior (andén)","Rejillas de piso"]],
+["Seguridad",["Alarma","Botiquín","Cámaras de video (cantidad)","Candados o cadenas de las puertas de ingreso","Chapas y llaves de las casetas","Concertinas","Espejos exteriores tipo luna (cantidad)","Extintores (cantidad y clase)","Gabinetes contra incendio (cantidad)"]],
+["Iluminación",["Lámparas (cantidad)","Reflectores (cantidad)","Instalaciones eléctricas de la caseta: paredes / vidrios / puertas","Otros"]],
+["Equipos automáticos",["Talanqueras","Vara para acceso y salida","Puertas de acceso y salida","Cerramiento (muro / malla / otro)"]],
+["Instalaciones",["Condiciones hidráulicas (contador, registro, tomas, llaves)","Conexiones eléctricas (tomacorrientes, contador, caja de tacos, suiches)"]],
+["Otros",["Caneca de basura (cantidad)","Ascensor","Escaleras","Ascensor vehicular o montacoches","Duplicadores"]],
+["Bicicleteros",["Tipo de bicicletero (sencillo U / 6 cupos / 12 cupos / otro)","Guaya de seguridad","Candados","Perros"]]];
+const HV_FOTOS0=["Entradas","Muros externos / fachada","Muros internos","Punto de pago","Batería sanitaria"];
+function tpl(){let n=1;return {secs:HV_SEC0.map(([t,it])=>({id:"s"+n++,t,items:it.map(x=>({id:"i"+n++,t:x}))})),fotos:HV_FOTOS0.map(x=>({id:"f"+n++,t:x})),n}}
+const MOD_DEF={Administrador:{hv:"editar",inv:"editar"},Gerente:{hv:"editar",inv:"ver"},Gestor:{hv:"ninguno",inv:"ver"},Consulta:{hv:"ninguno",inv:"ver"},Solicitante:{hv:"ninguno",inv:"ninguno"}};
+const FIELDS=[["cc","CC"],["pr","Proyecto"],["n","Punto de servicio"],["zona","Zona"],["sub","Subzona"],["op","Operación"],["ger","Gerente de operaciones"],["ges","Gestor de recaudo"],["asi","Asistente del punto"],["tipo","Tipo"],["c","Ciudad"],["sis","Sistema"],["mon","Monitoreo"],["cC","Cupos de carro"],["cM","Cupos de moto"],["cB","Cupos de bicicleta"],["tot","Total de cupos"],["cl","Cluster"],["obs","Observaciones"]];
+const FL=Object.fromEntries(FIELDS);
+const DIFF=["op","zona","sub","ger","ges","asi","sis","mon","c","cC","cM","cB","tot","cl"];
+const NIVEL={ninguno:"Sin acceso",ver:"Solo ver",editar:"Ver y editar"};
 const ROLE_DEF={
- "Administrador":{l:"Administrador",d:"Configura la herramienta y gestiona usuarios",can:["ver","crear","estado","prioridad","asignar","aprobar","materiales","comentar","usuarios"]},
+ "Administrador":{l:"Administrador",d:"Configura la herramienta y gestiona usuarios",can:["ver","crear","estado","prioridad","asignar","aprobar","materiales","comentar","usuarios","configurar","cargarbase"]},
  "Gerente":{l:"Gerente de zona",d:"Supervisa su zona y aprueba solicitudes",can:["ver","crear","estado","prioridad","asignar","aprobar","comentar"]},
  "Gestor":{l:"Gestor de mantenimiento",d:"Atiende tickets y registra materiales",can:["ver","crear","estado","materiales","comentar"]},
  "Consulta":{l:"Consulta (solo lectura)",d:"Ve los tickets y tableros de sus puntos; no modifica nada",can:["ver"]},
  "Solicitante":{l:"Solicitante",d:"Reporta novedades y sigue sus propios tickets",can:["crear","propios"]}};
-const ACCIONES=[["ver","Ver tickets y tableros de su alcance"],["propios","Seguir sus propios tickets"],["crear","Reportar novedades"],["estado","Cambiar el estado de un ticket"],["prioridad","Cambiar la prioridad"],["asignar","Asignar responsable"],["aprobar","Aprobar o rechazar materiales"],["materiales","Registrar materiales usados"],["comentar","Comentar en tickets"],["usuarios","Gestionar usuarios y permisos"]];
+const ACCIONES=[["ver","Ver tickets y tableros de su alcance"],["propios","Seguir sus propios tickets"],["crear","Reportar novedades"],["estado","Cambiar el estado de un ticket"],["prioridad","Cambiar la prioridad"],["asignar","Asignar responsable"],["aprobar","Aprobar o rechazar materiales"],["materiales","Registrar materiales usados"],["comentar","Comentar en tickets"],["usuarios","Gestionar usuarios y permisos"],["configurar","Configurar inventario, ubicaciones y datos de la cuenta"],["cargarbase","Cargar la base mensual de puntos de servicio"]];
 const USERS0=[
  {id:"u1",n:"Andrea Salazar",e:"andrea.salazar@cliente.example",rol:"Administrador",pts:"all",est:"Activo",acc:"hoy"},
  {id:"u2",n:"Camilo Herrera",e:"camilo.herrera@cliente.example",rol:"Gerente",pts:["p1","p2","p3","p5","p7","p8"],est:"Activo",acc:"ayer"},
@@ -234,7 +264,8 @@ const SEED=[
  [48,"p2","Materiales","Pintura para topellantas","Dos galones amarillo tráfico.","Bajo","Cerrado","Andrés Ruiz","Julián Pardo","Aprobado",false,[["i4",2]]]
 ];
 let S;
-const KEY="mantia-demo-v2";
+Object.defineProperty(window,"PUNTOS",{get:()=>S.puntos});
+const KEY="mantia-demo-v5";
 function pcost(inv,list){return list.reduce((a,m)=>a+m.q*inv.find(x=>x.id===m.i).p,0)}
 function seed(){
   const inv=JSON.parse(JSON.stringify(INV0));
@@ -248,11 +279,17 @@ function seed(){
     return {id:"TK-"+(101+k),created,punto:r[1],tipo:r[2],nov:r[3],det:r[4],pri:r[5],est:r[6],sol:r[7],resp:r[8],apr:r[9],foto:r[10],mats,hist:hist.sort((a,b)=>b.t-a.t),
       closed:r[6]==="Cerrado"?created+Math.min(r[0]*DAY*0.7,DAY*6):null};
   }).sort((a,b)=>b.created-a.created);
-  return {tickets,inv,mov:[],next:101+SEED.length,view:"resumen",users:JSON.parse(JSON.stringify(USERS0)),me:"u1",audit:[],f:{e:"todos",t:"todos",q:""},mode:"tabla",sel:null};
+  const hvTpl=tpl(),hv={};
+  {const it={};hvTpl.secs.slice(0,3).forEach(s=>s.items.forEach((x,k)=>{it[x.id]={e:["B","B","R","B","M"][k%5],c:k%3===0?String(10+k):"",u:k%3===0?"und":"",o:k%5===4?"Requiere intervención":""}}));
+   hv.p1={g:{creacion:new Date(NOW-30*DAY).toISOString().slice(0,10),apertura:"2019-03-01",elaboro:"Andrea Salazar",cond:"Cubierto",auto:"Sí",empresa:"Proveedor de ejemplo"},it,tr:"Cambio de bombillos del sótano 2 y demarcación de celdas de motos.",ob:"Hoja de ejemplo con datos ficticios.",prev:[{t:"Lubricación de talanqueras",i:"2026-09-05",f:"2026-09-05",r:"Camila Ortiz",p:"2026-12-05"}],corr:[{t:"Reposición de bombillos",i:"2026-09-18",f:"2026-09-19",r:"Julián Pardo",o:"Se usaron 6 bombillos LED"}],fotos:{},upd:NOW-2*DAY}}
+  return {tickets,inv,puntos:PUNTOS0.map(p=>({k:p.cc,zona:p.c==="Bogotá"?"Norte":"Regional",sub:"Demostración",op:"Operando",ger:"Camilo Herrera",ges:"Camila Ortiz",sis:"SIP",cC:60,cM:10,cB:8,tot:70,cl:"Demostración",...p})),db:{mes:"Datos de ejemplo",fecha:null,archivo:"",n:PUNTOS0.length,hist:[]},hvTpl,hv,hvSel:null,hvEdit:false,mov:[],next:101+SEED.length,view:"resumen",users:JSON.parse(JSON.stringify(USERS0)),me:"u1",audit:[],f:{e:"todos",t:"todos",q:""},mode:"tabla",sel:null};
 }
-function load(){try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users)return o}}catch(e){}return seed()}
+function blank(){
+  return {tickets:[],inv:[],puntos:[],db:null,hvTpl:tpl(),hv:{},hvSel:null,hvEdit:false,mov:[],next:1,view:"resumen",users:[{id:"u1",n:"Administrador",e:"admin@tuempresa.com",rol:"Administrador",pts:"all",est:"Activo",acc:"hoy"}],me:"u1",audit:[],f:{e:"todos",t:"todos",q:""},mode:"tabla",sel:null};
+}
+function load(){try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users&&o.puntos&&o.hvTpl&&"db" in o)return o}}catch(e){}return /[?&]vacio/.test(location.search)?blank():seed()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
-S=load(); S.sel=null;
+S=load(); S.sel=null; S.hvSel=null; S.hvEdit=false;
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -262,13 +299,16 @@ const me=()=>S.users.find(u=>u.id===S.me)||S.users[0];
 const can=a=>ROLE_DEF[me().rol].can.includes(a);
 const dis=a=>can(a)?"":'disabled title="Tu rol no permite este cambio"';
 const meName=()=>me().n;
-const inScope=(u,id)=>u.pts==="all"||u.pts.includes(id);
+const mods=u=>u.rol==="Administrador"?{hv:"editar",inv:"editar"}:{...MOD_DEF[u.rol],...(u.mods||{})};
+const lvl=m=>mods(me())[m];
+const inScope=(u,id)=>{if(u.pts==="all")return true;if(Array.isArray(u.pts))return u.pts.includes(id);const p=pt(id);return !!p&&(u.pts.zonas||[]).includes(p.zona)};
 const vis=()=>{const u=me();return u.rol==="Solicitante"?S.tickets.filter(t=>t.sol===u.n):S.tickets.filter(t=>inScope(u,t.punto))};
-const ptsVis=()=>{const u=me();return PUNTOS.filter(p=>inScope(u,p.id))};
-const alcance=u=>u.pts==="all"?"Todos los puntos":u.pts.map(id=>pt(id).n).join(", ");
+const ptsVis=()=>{const u=me();return PUNTOS.filter(p=>!p.baja&&inScope(u,p.id))};
+const plabel=p=>`${p.n} · ${p.c} · ${p.cc||p.id}`;
+const alcance=u=>u.pts==="all"?"Todos los puntos":Array.isArray(u.pts)?(u.pts.length>3?u.pts.length+" puntos específicos":u.pts.map(id=>(pt(id)||{n:id}).n).join(", ")||"Sin puntos"):"Zonas: "+((u.pts.zonas||[]).join(", ")||"ninguna");
 const logA=x=>{S.audit.unshift({t:Date.now(),x})};
 function views(){const r=me().rol;if(r==="Solicitante")return["portal","tickets"];
-  const v=["resumen","tickets"];if(can("crear"))v.push("portal");v.push("puntos","inv","eco");if(can("usuarios"))v.push("usuarios");return v}
+  const v=["resumen","tickets"];if(can("crear"))v.push("portal");v.push("puntos","mapa");if(lvl("hv")!=="ninguno")v.push("hv");if(lvl("inv")!=="ninguno")v.push("inv");v.push("eco");if(can("usuarios"))v.push("usuarios");if(can("cargarbase"))v.push("cargar");return v}
 const ago=t=>{const d=(NOW-t)/DAY;return d<1?"hoy":d<2?"ayer":"hace "+Math.floor(d)+" d"};
 const fdate=t=>new Date(t).toLocaleDateString("es-CO",{day:"2-digit",month:"short"});
 const ftime=t=>new Date(t).toLocaleString("es-CO",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
@@ -278,6 +318,24 @@ const cost=t=>pcost(S.inv,t.mats);
 const chipE=e=>`<span class="chip ${ECLASS[e]}">${esc(e)}</span>`;
 const chipS=t=>overdue(t)?`<span class="chip c-vencido">Vencido</span>`:"";
 const priC=p=>`<span class="c-${p.toLowerCase()}">${p}</span>`;
+const gestores=cur=>{const l=["Sin asignar",...S.users.filter(u=>u.est==="Activo"&&(u.rol==="Gestor"||u.rol==="Gerente")).map(u=>u.n)];if(cur&&!l.includes(cur))l.push(cur);return l};
+function closeModal(){const m=document.querySelector("#modal");if(m)m.remove()}
+function formModal(title,body,okLabel,onok,bad){
+  closeModal();
+  const m=document.createElement("div");m.className="modal";m.id="modal";
+  m.innerHTML=`<form class="box" novalidate role="dialog" aria-modal="true" aria-label="${esc(title)}"><h3 style="margin:0">${esc(title)}</h3>${body}<p class="ferr" style="margin:0;color:var(--bad)" role="alert"></p><div class="tools" style="justify-content:flex-end"><button type="button" class="btn" data-x>Cancelar</button><button class="btn ${bad?"bad":"primary"}" type="submit">${esc(okLabel)}</button></div></form>`;
+  document.body.appendChild(m);
+  m.querySelector("[data-x]").onclick=closeModal;m.onclick=e=>{if(e.target===m)closeModal()};
+  m.querySelector("form").onsubmit=e=>{e.preventDefault();const r=onok();if(r){m.querySelector(".ferr").textContent=r;return}closeModal()};
+  const f=m.querySelector("input,select");if(f)f.focus();
+}
+const confirmBox=(title,text,label,fn)=>formModal(title,`<p class="muted" style="margin:0">${text}</p>`,label,()=>{fn()},true);
+function setup(){
+  if(!can("configurar"))return "";
+  const st=[["cargar","Carga la base de puntos de servicio",S.puntos.length>0],["usuarios","Invita a tu equipo y a quienes reportan",S.users.length>1],["inv","Carga tu inventario de materiales",S.inv.length>0]];
+  if(st.every(x=>x[2]))return "";
+  return `<div class="card"><h2>Configura tu cuenta</h2><ul class="feed">${st.map(([v,l,ok])=>`<li style="display:flex;align-items:center;gap:10px"><span class="dot" style="${ok?"background:var(--ok)":""}"></span><div>${ok?`<s class="muted">${l}</s>`:l}</div>${ok?"":`<button class="btn sm" data-go="${v}" style="margin-left:auto">Ir</button>`}</li>`).join("")}</ul></div>`;
+}
 function toast(m){const e=document.createElement("div");e.className="toast";e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),2400)}
 async function copy(txt){try{await navigator.clipboard.writeText(txt);toast("Copiado")}catch(e){toast("No se pudo copiar; selecciónalo manualmente")}}
 const IC={
@@ -289,29 +347,32 @@ const IC={
  inv:'<path d="M3 7l7-4 7 4v7l-7 4-7-4zM3 7l7 4 7-4M10 11v7"/>',
  inf:'<path d="M5 3h8l3 3v11H5zM8 9h5M8 12h5M8 15h3"/>',
  sal:'<path d="M3 5h10v10H3zM13 8h3l1 3v4h-4M6 17a1.5 1.5 0 1 0 0 .01M14 17a1.5 1.5 0 1 0 0 .01"/>'};
+IC.hv='<path d="M5 3h7l3 3v11H5zM12 3v3h3M7.5 12l1.8 1.8 3.2-3.6"/>';
+IC.mapa='<path d="M3 5l5-2 4 2 5-2v12l-5 2-4-2-5 2zM8 3v12M12 5v12"/>';
+IC.usuarios='<circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5M14 4a3 3 0 0 1 0 6M16 12c1.5.6 2 2 2 3"/>';
 IC.usr='<circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5M14 4a3 3 0 0 1 0 6M16 12c1.5.6 2 2 2 3"/>';
 const ico=k=>`<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
-const TITLES={resumen:["Resumen","Estado de la operación en tiempo real"],tickets:["Tickets","Todas las solicitudes, con su estado y tiempos"],portal:["Reportar una novedad","Así lo ve quien reporta: sin usuario, desde el celular"],puntos:["Puntos de servicio","Cada punto tiene su propio enlace de reporte y su historial"],inv:["Inventario","Vista previa: el material usado en un ticket descuenta aquí"],eco:["Cómo se conecta","Un solo registro de punta a punta"],usuarios:["Usuarios y permisos","Quién entra, qué ve y qué puede cambiar"]};
+const TITLES={resumen:["Resumen","Estado de la operación en tiempo real"],tickets:["Tickets","Todas las solicitudes, con su estado y tiempos"],portal:["Reportar una novedad","Así lo ve quien reporta: sin usuario, desde el celular"],puntos:["Puntos de servicio","Base maestra mensual: de aquí salen tickets, mapa y hojas de vida"],inv:["Inventario","Vista previa: el material usado en un ticket descuenta aquí"],eco:["Cómo se conecta","Un solo registro de punta a punta"],usuarios:["Usuarios y permisos","Quién entra, qué ve y qué puede cambiar"],mapa:["Mapa de puntos","Dónde está cada punto y cómo va su operación"],cargar:["Cargar base de puntos","Actualiza la base mensual; de ahí salen tickets, mapa y hojas de vida"],hv:["Hojas de vida","Ficha técnica de cada punto de servicio"]};
 
 function renderNav(){
   const ok=views(),ext=me().rol==="Solicitante";
   const item=(k,l)=>ok.includes(k)?`<button data-v="${k}" ${S.view===k?'aria-current="page"':""}>${ico(k)}${k==="tickets"&&ext?"Mis tickets":l}</button>`:"";
   const soon=(k,l)=>`<button disabled>${ico(k)}${l}<span class="tag">Próximo</span></button>`;
-  let n=`<h6>Operación</h6>`+item("resumen","Resumen")+item("tickets","Tickets")+item("portal","Reportar novedad")+item("puntos","Puntos de servicio");
-  if(!ext)n+=`<h6>Módulos</h6>`+item("inv","Inventario")+soon("inf","Informes")+soon("sal","Salidas de material")+item("eco","Cómo se conecta")+
-    `<h6>Administración</h6>`+(ok.includes("usuarios")?item("usuarios","Usuarios y permisos"):`<button disabled>${ico("usr")}Usuarios y permisos<span class="tag">Admin</span></button>`);
+  let n=`<h6>Operación</h6>`+item("resumen","Resumen")+item("tickets","Tickets")+item("portal","Reportar novedad")+item("puntos","Puntos de servicio")+item("mapa","Mapa");
+  if(!ext)n+=`<h6>Módulos</h6>`+item("hv","Hojas de vida")+item("inv","Inventario")+soon("inf","Informes")+soon("sal","Salidas de material")+item("eco","Cómo se conecta")+
+    `<h6>Administración</h6>`+(ok.includes("usuarios")?item("usuarios","Usuarios y permisos")+item("cargar","Cargar base de puntos"):`<button disabled>${ico("usuarios")}Usuarios y permisos<span class="tag">Admin</span></button>`);
   $("#nav").innerHTML=n;
-  $("#nav").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>{S.view=b.dataset.v;S.sel=null;render()});
+  $("#nav").querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>{S.view=b.dataset.v;S.sel=null;S.hvSel=null;S.hvEdit=false;render()});
 }
 function renderTools(){
   const act=S.users.filter(u=>u.est!=="Inactivo");
   $("#tools").innerHTML=`<div class="field" style="flex-direction:row;align-items:center;gap:8px"><label for="who">Ver como</label>
    <select id="who" class="inp" style="width:auto;max-width:270px">${act.map(u=>`<option value="${u.id}" ${S.me===u.id?"selected":""}>${esc(u.n)} · ${ROLE_DEF[u.rol].l}</option>`).join("")}</select></div>
-   ${S.view==="usuarios"?'<button class="btn primary" id="inv">Invitar usuario</button>':""}
+   ${S.view==="usuarios"&&can("usuarios")?'<button class="btn primary" id="inv">Invitar usuario</button>':""}${S.view==="puntos"&&can("cargarbase")?'<button class="btn primary" id="cargar">Cargar base mensual</button>':""}${S.view==="inv"&&lvl("inv")==="editar"?'<button class="btn primary" id="addm">Agregar material</button>':""}
    <button class="btn" id="theme" aria-label="Cambiar tema claro u oscuro">Tema</button>
    <button class="btn" id="reset">Restablecer demo</button>`;
   $("#who").onchange=e=>{S.me=e.target.value;S.sel=null;if(!views().includes(S.view))S.view=views()[0];save();render()};
-  if($("#inv"))$("#inv").onclick=modalInvite;
+  if($("#inv"))$("#inv").onclick=()=>modalUser();if($("#cargar"))$("#cargar").onclick=()=>{S.view="cargar";S.sel=null;render()};if($("#addm"))$("#addm").onclick=()=>modalMat();
   $("#theme").onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark"};
   $("#reset").onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}const v=S.view;S=seed();S.view=v;render();toast("Demo restablecido")};
 }
@@ -323,8 +384,9 @@ function render(){
   $("#h1").textContent=t;$("#sub").textContent=s;
   $("#notice").innerHTML=r==="Consulta"?`<div class="notice">Tu rol es de <b>solo lectura</b>: puedes consultar los tickets de tus puntos, pero no modificar nada.</div>`:
     r==="Solicitante"?`<div class="notice">Puedes reportar novedades y ver el avance de <b>tus</b> tickets. No ves el resto de la operación.</div>`:"";
-  ({resumen:vResumen,tickets:vTickets,portal:vPortal,puntos:vPuntos,inv:vInv,eco:vEco,usuarios:vUsuarios})[S.view]();
+  ({resumen:vResumen,tickets:vTickets,portal:vPortal,puntos:vPuntos,inv:vInv,eco:vEco,usuarios:vUsuarios,mapa:vMapa,hv:vHV,cargar:vCargar})[S.view]();
   renderLayer();
+  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{S.view=b.dataset.go;S.sel=null;render()});
 }
 
 /* ---------- Resumen ---------- */
@@ -341,7 +403,7 @@ function vResumen(){
   const byP=ptsVis().map(p=>({p,c:T.filter(t=>t.punto===p.id).reduce((a,t)=>a+cost(t),0),n:T.filter(t=>t.punto===p.id).length})).sort((a,b)=>b.c-a.c).slice(0,5);
   const cmax=Math.max(1,...byP.map(r=>r.c));
   const act=T.flatMap(t=>t.hist.map(h=>({...h,id:t.id}))).sort((a,b)=>b.t-a.t).slice(0,6);
-  $("#view").innerHTML=`<div class="grid">
+  $("#view").innerHTML=`<div class="grid">${setup()}
    <div class="grid kpis">
     <div class="card kpi"><span>Tickets abiertos</span><b>${abiertos.length}</b><small class="muted">${T.length} en total</small></div>
     <div class="card kpi"><span>Fuera de plazo</span><b style="color:${venc.length?"var(--bad)":"inherit"}">${venc.length}</b><small class="muted">según prioridad (2 / 5 / 10 días)</small></div>
@@ -383,7 +445,7 @@ function vTickets(){
 }
 function list(){
   const L=filtered();
-  if(!L.length){$("#list").innerHTML=`<div class="card empty">Ningún ticket coincide con los filtros.</div>`;return}
+  if(!L.length){$("#list").innerHTML=`<div class="card empty">${S.tickets.length?"Ningún ticket coincide con los filtros.":"Todavía no hay tickets. Cuando alguien reporte una novedad desde el portal, aparecerá aquí."}</div>`;return}
   if(S.mode==="tabla"){
    $("#list").innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Ticket</th><th>Punto</th><th>Novedad</th><th>Tipo</th><th>Prior.</th><th>Estado</th><th>Responsable</th><th>Antigüedad</th></tr></thead><tbody>${L.map(t=>`
     <tr class="row" data-id="${t.id}" tabindex="0"><td class="mono">${t.id}</td><td>${esc(pt(t.punto).n)}</td><td class="trunc">${esc(t.nov)}</td><td>${t.tipo}</td><td>${priC(t.pri)}</td>
@@ -410,7 +472,7 @@ function renderLayer(){
    <div class="meta">
     <div class="field"><label for="se">Estado</label><select id="se" class="inp" ${dis("estado")}>${ESTADOS.map(e=>`<option ${t.est===e?"selected":""}>${e}</option>`).join("")}</select></div>
     <div class="field"><label for="sp">Prioridad</label><select id="sp" class="inp" ${dis("prioridad")}>${Object.keys(SLA).map(e=>`<option ${t.pri===e?"selected":""}>${e}</option>`).join("")}</select></div>
-    <div class="field"><label for="sr">Responsable</label><select id="sr" class="inp" ${dis("asignar")}>${GESTORES.map(e=>`<option ${t.resp===e?"selected":""}>${e}</option>`).join("")}</select></div>
+    <div class="field"><label for="sr">Responsable</label><select id="sr" class="inp" ${dis("asignar")}>${gestores(t.resp).map(e=>`<option ${t.resp===e?"selected":""}>${e}</option>`).join("")}</select></div>
     <div class="field"><label>Solicitante</label><div style="padding:8px 0">${esc(t.sol)}<div class="muted" style="font-size:12px">${ftime(t.created)}</div></div></div>
    </div>
    ${t.apr?`<div class="sec"><h4>Aprobación</h4><div>${t.apr==="Pendiente"?`<span class="chip c-espera">Pendiente de gerente</span>`:t.apr==="Aprobado"?`<span class="chip c-cerrado">Aprobado</span>`:`<span class="chip c-vencido">Rechazado</span>`}</div>
@@ -418,14 +480,15 @@ function renderLayer(){
    <div class="sec"><h4>Detalle</h4><div>${esc(t.det)}</div>${t.foto?`<div class="photo">Evidencia fotográfica adjunta</div>`:""}</div>
    ${ext?"":`<div class="sec"><h4>Materiales usados · ligados al inventario</h4>
      ${mats.length?`<div class="tbl-wrap"><table style="min-width:0"><thead><tr><th>Material</th><th>Cant.</th><th>Costo</th></tr></thead><tbody>${mats.map(m=>`<tr><td>${esc(m.it.n)}</td><td class="mono">${m.q} ${m.it.u}</td><td class="mono">${cop(m.q*m.it.p)}</td></tr>`).join("")}</tbody></table></div><div class="muted">Costo total del ticket: <b class="mono" style="color:var(--fg)">${cop(cost(t))}</b></div>`:`<div class="muted">Aún no se registran materiales.</div>`}
-     ${can("materiales")?`<div class="tools"><select id="mi" class="inp" style="width:auto;flex:1;min-width:160px" aria-label="Material">${S.inv.map(i=>`<option value="${i.id}">${esc(i.n)} (stock ${i.s})</option>`).join("")}</select>
-      <input id="mq" class="inp" type="number" min="1" value="1" style="width:76px" aria-label="Cantidad"><button class="btn" id="ma">Registrar uso</button></div>`:`<div class="muted">Tu rol no permite registrar materiales.</div>`}</div>`}
+     ${can("materiales")&&S.inv.length?`<div class="tools"><select id="mi" class="inp" style="width:auto;flex:1;min-width:160px" aria-label="Material">${S.inv.map(i=>`<option value="${i.id}">${esc(i.n)} (stock ${i.s})</option>`).join("")}</select>
+      <input id="mq" class="inp" type="number" min="1" value="1" style="width:76px" aria-label="Cantidad"><button class="btn" id="ma">Registrar uso</button></div>`:`<div class="muted">${can("materiales")?"Aún no hay materiales en el inventario.":"Tu rol no permite registrar materiales."}</div>`}</div>`}
    ${ext?"":`<div class="sec"><h4>Comunicación</h4><div class="tools"><button class="btn" id="em">Correo de seguimiento</button>
      <a class="btn" id="wa" target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encodeURIComponent(waText(t))}">Compartir por WhatsApp</a>
      <button class="btn" id="cl">Copiar enlace</button></div></div>`}
    <div class="sec"><h4>Historial</h4>
      ${can("comentar")?`<div class="tools"><input id="cm" class="inp" style="flex:1;min-width:160px" placeholder="Agregar un comentario" aria-label="Comentario"><button class="btn" id="cb">Comentar</button></div>`:""}
      <ul class="tl">${t.hist.map(h=>`<li><b>${esc(h.x)}</b><div class="muted" style="font-size:12px">${esc(h.who)} · ${ftime(h.t)}</div></li>`).join("")}</ul></div>
+   ${can("configurar")?`<div class="sec"><button class="btn bad" id="dt">Eliminar ticket</button></div>`:""}
   </aside>`;
   const close=()=>{S.sel=null;renderLayer()};
   $("#x").onclick=close;$("#scrim").onclick=close;
@@ -438,6 +501,7 @@ function renderLayer(){
     if(it.s<q){toast("Stock insuficiente: quedan "+it.s+" "+it.u);return}
     it.s-=q;const m=t.mats.find(x=>x.i===it.id);m?m.q+=q:t.mats.push({i:it.id,q});
     S.mov.unshift({t:Date.now(),i:it.id,q:-q,tk:t.id});addHist(t,`Registró ${q} ${it.u} de ${it.n} (descontado del inventario)`);done(t)};
+  if($("#dt"))$("#dt").onclick=()=>confirmBox("Eliminar ticket",`Se eliminará <b>${t.id}</b> con todo su historial. Los materiales que tenía registrados vuelven al inventario. No se puede deshacer.`,"Eliminar",()=>{t.mats.forEach(m=>{const it=S.inv.find(i=>i.id===m.i);if(it)it.s+=m.q});S.tickets=S.tickets.filter(x=>x.id!==t.id);S.sel=null;save();render();toast("Ticket eliminado")});
   if($("#em"))$("#em").onclick=()=>modalMail(t);
   if($("#cl"))$("#cl").onclick=()=>copy(trackLink(t));
   if($("#cb"))$("#cb").onclick=()=>{const v=$("#cm").value.trim();if(!v)return;addHist(t,"Comentó: "+v);done(t)};
@@ -455,13 +519,12 @@ function modalMail(t){
    <button class="btn" id="mc" style="align-self:end">Cerrar</button></div>`;
   document.body.appendChild(m);$("#mc").onclick=closeModal;m.onclick=e=>{if(e.target===m)closeModal()};
 }
-function closeModal(){const m=$("#modal");if(m)m.remove()}
 
 /* ---------- Portal ---------- */
 function vPortal(){
   $("#view").innerHTML=`<div class="portal card"><div class="brand" style="margin-bottom:6px"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M8 23V13l8 7 8-7v10" stroke="var(--accent-fg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="8.6" r="2.1" fill="var(--accent-fg)"/></svg><div><b>Reporte de novedades</b><small>Recibirás un número de ticket por correo</small></div></div>
    <form id="fr" class="grid" style="gap:14px" novalidate>
-    <div class="field"><label for="fp">Punto de servicio</label><select id="fp" class="inp">${(me().rol==="Solicitante"?ptsVis():PUNTOS).map(p=>`<option value="${p.id}">${esc(p.n)} · ${esc(p.c)}</option>`).join("")}</select></div>
+    <div class="field"><label for="fp">Punto de servicio</label><input id="fp" class="inp" list="dlp" autocomplete="off" placeholder="Escribe para buscar el punto" value="${me().rol==="Solicitante"&&ptsVis().length===1?esc(plabel(ptsVis()[0])):""}"><datalist id="dlp">${ptsVis().map(p=>`<option value="${esc(plabel(p))}">`).join("")}</datalist></div>
     <div class="field"><label for="ft2">Tipo de solicitud</label><select id="ft2" class="inp">${TIPOS.map(p=>`<option>${p}</option>`).join("")}</select></div>
     <div class="field"><label for="fn">¿Qué ocurre?</label><input id="fn" class="inp" placeholder="Ej.: La luz del punto de pago no funciona" maxlength="120"></div>
     <div class="field"><label for="fd">Detalle</label><textarea id="fd" class="inp" placeholder="Cuéntanos qué pasó, desde cuándo y qué riesgo ves"></textarea></div>
@@ -472,9 +535,11 @@ function vPortal(){
     <button class="btn primary" type="submit" style="justify-content:center">Enviar reporte</button></form></div>`;
   $("#fr").onsubmit=e=>{e.preventDefault();
     const nov=$("#fn").value.trim(),sol=$("#fs").value.trim();
+    const ppick=ptsVis().find(p=>plabel(p)===$("#fp").value.trim());
+    if(!ppick){$("#err").textContent=ptsVis().length?"Elige un punto de la lista (empieza a escribir su nombre).":"Todavía no hay puntos de servicio. Carga la base de puntos primero.";return}
     if(!nov||!sol){$("#err").textContent="Completa qué ocurre y tu nombre para poder enviarlo.";return}
     const tipo=$("#ft2").value,now=Date.now();
-    const t={id:"TK-"+S.next++,created:now,punto:$("#fp").value,tipo,nov,det:$("#fd").value.trim()||"Sin detalle adicional.",pri:"Medio",est:"Abierto",sol,resp:"Sin asignar",apr:tipo==="Materiales"?"Pendiente":null,foto:!!$("#ff").files.length,mats:[],hist:[{t:now,who:sol,x:"Reportó la novedad desde el portal"},{t:now,who:"Sistema",x:"Correo de acuse enviado al solicitante"}],closed:null};
+    const t={id:"TK-"+S.next++,created:now,punto:ppick.id,tipo,nov,det:$("#fd").value.trim()||"Sin detalle adicional.",pri:"Medio",est:"Abierto",sol,resp:"Sin asignar",apr:tipo==="Materiales"?"Pendiente":null,foto:!!$("#ff").files.length,mats:[],hist:[{t:now,who:sol,x:"Reportó la novedad desde el portal"},{t:now,who:"Sistema",x:"Correo de acuse enviado al solicitante"}],closed:null};
     S.tickets.unshift(t);save();
     $("#view").innerHTML=`<div class="portal card" style="display:flex;flex-direction:column;gap:12px"><span class="chip c-cerrado" style="align-self:start">Recibido</span>
       <h2 style="margin:0;font-size:20px;color:var(--fg)">Tu ticket es <span class="mono">${t.id}</span></h2>
@@ -485,19 +550,334 @@ function vPortal(){
 }
 
 /* ---------- Puntos ---------- */
+function modalUbicar(p){
+  formModal("Ubicación de "+p.n,
+   `<div class="field"><label for="pd">Dirección</label><input id="pd" class="inp" value="${esc(p.dir||"")}" placeholder="Ej.: Calle 72 # 10-34"></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+     <div class="field"><label for="pla">Latitud</label><input id="pla" class="inp" inputmode="decimal" value="${hasLoc(p)?p.lat:""}" placeholder="4.6597"></div>
+     <div class="field"><label for="plo">Longitud</label><input id="plo" class="inp" inputmode="decimal" value="${hasLoc(p)?p.lng:""}" placeholder="-74.0600"></div></div>
+    <div class="tools"><button type="button" class="btn sm" id="geo">Buscar la dirección</button><button type="button" class="btn sm" id="pick">Elegir en el mapa</button></div><span class="hint" id="geomsg">La ubicación no viene en la base mensual; se guarda aparte y se conserva en cada nueva carga.</span>`,
+   "Guardar ubicación",()=>{
+    const la=$("#pla").value.trim(),lo=$("#plo").value.trim();let lat=null,lng=null;
+    if(la||lo){lat=parseFloat(la.replace(",","."));lng=parseFloat(lo.replace(",","."));if(isNaN(lat)||isNaN(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return "La latitud y la longitud deben ser números válidos (ej.: 4.6597 y -74.0600)."}
+    p.dir=$("#pd").value.trim();p.lat=lat;p.lng=lng;save();render();toast("Ubicación guardada")});
+  $("#pick").onclick=()=>{closeModal();PLACE=p.id;S.view="mapa";render()};
+  $("#geo").onclick=async()=>{const q=[$("#pd").value.trim(),p.c].filter(Boolean).join(", "),m=$("#geomsg");
+    if(!$("#pd").value.trim()){m.textContent="Escribe la dirección.";return}
+    m.textContent="Buscando…";
+    try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(q)),j=await r.json();
+      if(j[0]){$("#pla").value=(+j[0].lat).toFixed(6);$("#plo").value=(+j[0].lon).toFixed(6);m.textContent="Ubicación encontrada. Revísala en el mapa."}
+      else m.textContent="No se encontró esa dirección. Escribe latitud y longitud o elígela en el mapa."}
+    catch(e){m.textContent="No se pudo consultar el buscador. Escribe latitud y longitud o elígela en el mapa."}};
+}
+function modalDetalle(p){
+  const rows=FIELDS.filter(([k])=>p[k]!=null&&p[k]!=="").map(([k,l])=>`<div><div class="muted" style="font-size:12px">${l}</div><div>${esc(p[k])}</div></div>`).join("")+
+    Object.entries(p.ex||{}).map(([k,v])=>`<div><div class="muted" style="font-size:12px">${esc(k)}</div><div>${esc(v)}</div></div>`).join("");
+  const link="https://mantia.example/r/"+p.id;
+  formModal(p.n,`<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">${rows}</div>
+   <div class="tools"><button type="button" class="btn sm" id="cpl">Copiar enlace de reporte</button>${can("configurar")&&!p.baja?'<button type="button" class="btn sm" id="ubp">'+(hasLoc(p)?"Cambiar ubicación":"Ubicar en el mapa")+"</button>":""}</div>
+   <span class="hint">${hasLoc(p)?"Ubicado en el mapa"+(p.dir?" · "+esc(p.dir):""):"Sin ubicación en el mapa"}. Estos datos vienen de la base mensual y solo se cambian cargando una nueva.</span>`,"Cerrar",()=>{});
+  $("#cpl").onclick=()=>copy(link);if($("#ubp"))$("#ubp").onclick=()=>{closeModal();modalUbicar(p)};
+}
 function vPuntos(){
-  $("#view").innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Punto</th><th>Ciudad</th><th>Abiertos</th><th>Total</th><th>Costo de materiales</th><th>Enlace de reporte</th></tr></thead><tbody>${ptsVis().map(p=>{
-   const T=vis().filter(t=>t.punto===p.id),link="https://mantia.example/r/"+p.id;
-   return `<tr><td><b style="font-weight:600">${esc(p.n)}</b></td><td>${p.c}</td><td class="mono">${T.filter(isOpen).length}</td><td class="mono">${T.length}</td><td class="mono">${cop(T.reduce((a,t)=>a+cost(t),0))}</td>
-   <td><button class="btn sm" data-l="${link}">Copiar enlace</button></td></tr>`}).join("")}</tbody></table></div>
-   <p class="muted">En la versión real, cada enlace se imprime como código QR y se pega en el punto. Quien lo escanea reporta sin crear usuario, y el ticket ya llega con el punto correcto.</p>`;
-  document.querySelectorAll("[data-l]").forEach(b=>b.onclick=()=>copy(b.dataset.l));
+  const adm=can("cargarbase"),L=ptsVis(),all=PUNTOS.filter(p=>inScope(me(),p.id)),f=S.fp=S.fp||{q:"",z:"",c:"",o:""};
+  if(!all.length){$("#view").innerHTML=`<div class="card empty">${adm?"Todavía no hay puntos de servicio. Usa «Cargar base mensual» para subir el archivo de distribución de puntos.":"No tienes puntos de servicio asignados."}</div>`;return}
+  const dis=a=>[...new Set(L.map(p=>p[a]).filter(Boolean))].sort((x,y)=>x.localeCompare(y,"es"));
+  const bajas=all.filter(p=>p.baja).length;
+  $("#view").innerHTML=`<div class="grid"><div class="muted" style="font-size:13px">${S.db?`Base: <b style="color:var(--fg)">${esc(S.db.mes)}</b>${S.db.fecha?" · cargada el "+ftime(S.db.fecha):""}${S.db.archivo?" · "+esc(S.db.archivo):""} · `:""}<b class="mono" style="color:var(--fg)">${L.length}</b> puntos · <b class="mono" style="color:var(--fg)">${L.reduce((a,p)=>a+(p.tot||0),0).toLocaleString("es-CO")}</b> cupos</div>
+   <div class="filters"><input class="inp" id="pq" type="search" placeholder="Buscar por punto, CC, gerente o gestor" value="${esc(f.q)}" aria-label="Buscar punto">
+    <select class="inp" id="pz" aria-label="Zona"><option value="">Todas las zonas</option>${dis("zona").map(z=>`<option ${f.z===z?"selected":""}>${esc(z)}</option>`).join("")}</select>
+    <select class="inp" id="pci" aria-label="Ciudad"><option value="">Todas las ciudades</option>${dis("c").map(z=>`<option ${f.c===z?"selected":""}>${esc(z)}</option>`).join("")}</select>
+    <select class="inp" id="po" aria-label="Operación"><option value="">Toda operación</option>${dis("op").map(z=>`<option ${f.o===z?"selected":""}>${esc(z)}</option>`).join("")}${bajas?`<option value="__baja" ${f.o==="__baja"?"selected":""}>Fuera de la base (${bajas})</option>`:""}</select></div>
+   <div id="ptab"></div></div>`;
+  const draw=()=>{
+    const q=f.q.trim().toLowerCase(),src=f.o==="__baja"?all.filter(p=>p.baja):L;
+    const R=src.filter(p=>(!f.z||p.zona===f.z)&&(!f.c||p.c===f.c)&&(!f.o||f.o==="__baja"||p.op===f.o)&&(!q||[p.n,p.cc,p.pr,p.ger,p.ges,p.sub].join(" ").toLowerCase().includes(q))).sort((a,b)=>String(a.n).localeCompare(String(b.n),"es"));
+    $("#ptab").innerHTML=R.length?`<div class="tbl-wrap"><table style="min-width:980px"><thead><tr><th>CC</th><th>Punto de servicio</th><th>Zona</th><th>Subzona</th><th>Ciudad</th><th>Operación</th><th>Gerente de operaciones</th><th>Gestor de recaudo</th><th>Sistema</th><th>Cupos</th></tr></thead><tbody>${R.slice(0,300).map(p=>`<tr class="row" data-pid="${p.id}" tabindex="0"><td class="mono">${esc(p.cc||"")}</td><td><b style="font-weight:600">${esc(p.n)}</b></td><td>${esc(p.zona||"")}</td><td>${esc(p.sub||"")}</td><td>${esc(p.c)}</td><td>${esc(p.op||"")}</td><td>${esc(p.ger||"")}</td><td>${esc(p.ges||"")}</td><td>${esc(p.sis||"")}</td><td class="mono">${p.tot??""}</td></tr>`).join("")}</tbody></table></div>${R.length>300?`<p class="muted">Se muestran 300 de ${R.length}. Usa los filtros para acotar.</p>`:`<p class="muted" style="margin:6px 0 0">${R.length} puntos. Pulsa uno para ver todos sus datos.</p>`}`:`<div class="card empty">Ningún punto coincide con los filtros.</div>`;
+    document.querySelectorAll("tr[data-pid]").forEach(r=>{const o=()=>modalDetalle(pt(r.dataset.pid));r.onclick=o;r.onkeydown=e=>{if(e.key==="Enter")o()}});
+  };
+  $("#pq").oninput=e=>{f.q=e.target.value;draw()};$("#pz").onchange=e=>{f.z=e.target.value;draw()};$("#pci").onchange=e=>{f.c=e.target.value;draw()};$("#po").onchange=e=>{f.o=e.target.value;draw()};
+  draw();
+}
+
+/* ---------- Cargar base ---------- */
+const norm=s=>String(s??"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const ALIAS={cc:["cc","centrodecosto","centrocosto","codigo"],pr:["proyecto","codigoproyecto"],n:["ps","puntodeservicio","punto","nombre","nombreps","sede"],zona:["zona"],sub:["subzona"],op:["operacion","estado"],ger:["gerenteoperaciones","gerentedeoperaciones","gerente"],ges:["gestorrecaudo","gestorderecaudo","gestor"],asi:["asistenteps","asistente"],tipo:["tipo"],c:["ciudad","municipio"],sis:["sistema"],mon:["monitoreo"],cC:["nocuposcarro","cuposcarro","cuposcarros"],cM:["nocuposmoto","cuposmoto"],cB:["nocuposbicicleta","cuposbicicleta"],obs:["observaciones","observacion"],cl:["cluster"],tot:["totalcupos","cupostotales"],lat:["latitud","lat"],lng:["longitud","lng","lon","long"],dir:["direccion"]};
+const AIDX={};Object.entries(ALIAS).forEach(([k,l])=>l.forEach(a=>AIDX[a]=k));
+const NUMF=["cC","cM","cB","tot"];
+function ensureXLSX(){return new Promise((ok,no)=>{if(window.XLSX)return ok();const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>window.XLSX?ok():no(new Error("lib"));s.onerror=()=>no(new Error("lib"));document.head.appendChild(s)})}
+async function parseDB(file){
+  try{await ensureXLSX()}catch(e){throw new Error("No se pudo cargar el lector de Excel (revisa tu conexión a internet).")}
+  const wb=XLSX.read(await file.arrayBuffer(),{type:"array"}),hid=(wb.Workbook&&wb.Workbook.Sheets)||[];let best=null;
+  wb.SheetNames.forEach((nm,i)=>{if(hid[i]&&hid[i].Hidden)return;
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1,defval:null,raw:true,blankrows:false});let hr=-1,hm=0;
+    for(let r=0;r<Math.min(15,rows.length);r++){const m=rows[r].filter(c=>c!=null&&AIDX[norm(c)]).length;if(m>hm){hm=m;hr=r}}
+    if(hm>=3&&rows[hr].some(c=>AIDX[norm(c)]==="n")){const cnt=rows.length-hr-1;if(!best||cnt>best.cnt)best={nm,rows,hr,cnt}}});
+  if(!best)throw new Error("No encontré una hoja con las columnas de puntos de servicio (por ejemplo CC, PS, Zona, Subzona, Ciudad).");
+  const head=best.rows[best.hr],map=[],extraCols=[],seenK={};
+  head.forEach((c,i)=>{if(c==null||String(c).trim()==="")return;const k=AIDX[norm(c)];if(k&&!seenK[k]){seenK[k]=1;map[i]=k}else extraCols.push([i,String(c).trim()])});
+  const pts=[],warn=[],used=new Set();let skip=0;
+  best.rows.slice(best.hr+1).forEach((r,ri)=>{
+    const o={ex:{}};
+    map.forEach((k,i)=>{if(!k)return;let v=r[i];if(v==null)return;
+      if(NUMF.includes(k)){v=Number(String(v).replace(/[^\d.\-]/g,""));o[k]=isFinite(v)?v:null}
+      else if(k==="lat"||k==="lng"){v=parseFloat(String(v).replace(",","."));o[k]=isFinite(v)?v:null}
+      else{v=String(v).replace(/\s+/g," ").trim();if(v)o[k]=v}});
+    extraCols.forEach(([i,l])=>{if(r[i]!=null&&String(r[i]).trim()!=="")o.ex[l]=String(r[i]).trim()});
+    if(!o.n){if(r.some(x=>x!=null&&String(x).trim()!==""))skip++;return}
+    o.k=String(o.cc||o.pr||norm(o.n));
+    if(used.has(o.k)){warn.push(`Fila ${best.hr+ri+2}: la clave «${o.k}» está repetida; se omitió «${o.n}».`);return}
+    used.add(o.k);o.c=o.c||"—";pts.push(o)});
+  if(skip)warn.push(`${skip} fila(s) sin nombre de punto se omitieron.`);
+  if(!pts.length)throw new Error("La hoja encontrada no tiene filas con datos.");
+  const mm=file.name.match(/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)[\s_\-.]*(\d{4})/i);
+  return {pts,sheet:best.nm,warn,extra:extraCols.map(x=>x[1]),file:file.name,
+    mes:mm?mm[1][0].toUpperCase()+mm[1].slice(1).toLowerCase()+" "+mm[2]:(new Date()).toLocaleDateString("es-CO",{month:"long",year:"numeric"}).replace(/^./,c=>c.toUpperCase())};
+}
+let PEND=null;
+function applyDB(P,mes){
+  const old=new Map(S.puntos.map(p=>[p.k||p.id,p])),seen=new Set(),out=[];let nu=0,up=0;
+  P.pts.forEach(i=>{seen.add(i.k);const o=old.get(i.k);
+    const m={...(o||{}),...i,id:o?o.id:"k"+i.k.replace(/\W+/g,"_"),baja:false};
+    ["lat","lng","dir"].forEach(f=>{if((i[f]==null||i[f]==="")&&o&&o[f]!=null)m[f]=o[f]});
+    if(o)up++;else nu++;out.push(m)});
+  let kept=0,dropped=0;const rest=[];
+  S.puntos.forEach(o=>{if(seen.has(o.k||o.id))return;
+    if(S.tickets.some(t=>t.punto===o.id)||S.hv[o.id]){o.baja=true;rest.push(o);kept++}else{dropped++}});
+  S.puntos=[...out,...rest];
+  const ids=new Set(S.puntos.map(p=>p.id));
+  S.users.forEach(u=>{if(Array.isArray(u.pts))u.pts=u.pts.filter(id=>ids.has(id))});
+  S.db={mes,fecha:Date.now(),archivo:P.file,n:out.length,hist:[{mes,t:Date.now(),by:meName(),n:out.length,nu,up,baja:kept+dropped,file:P.file},...((S.db&&S.db.hist)||[])].slice(0,12)};
+  logA(`${meName()} cargó la base de puntos «${mes}» (${out.length} puntos: ${nu} nuevos, ${up} actualizados, ${kept+dropped} fuera de la base)`);
+  save();return {nu,up,kept,dropped};
+}
+function vCargar(){
+  const link=location.href.split("#")[0]+"#cargar-base",hist=(S.db&&S.db.hist)||[];
+  $("#view").innerHTML=`<div class="grid two"><div class="card" style="display:flex;flex-direction:column;gap:14px"><h2>Cargar la base mensual de puntos</h2>
+    <p class="muted" style="margin:0">Sube el archivo de distribución del mes (Excel .xlsx o CSV). La herramienta busca la primera hoja visible con las columnas de punto de servicio (CC, PS, Zona, Subzona, Ciudad, gerente, gestor, cupos…) y la compara con la base actual antes de aplicar nada.</p>
+    <div class="field"><label for="dbf">Archivo de la base</label><input id="dbf" type="file" accept=".xlsx,.xls,.csv" class="inp"></div>
+    <div id="prev" aria-live="polite"></div></div>
+   <div class="grid"><div class="card"><h2>Enlace de cargue</h2><p class="hint" style="margin:0 0 10px">Quien tenga el permiso de cargar la base abre este enlace, sube el archivo y los puntos se actualizan.</p><div class="tools"><input class="inp" readonly value="${esc(link)}" style="flex:1;min-width:180px" aria-label="Enlace de cargue"><button class="btn" id="cpc">Copiar</button></div></div>
+    <div class="card"><h2>Base actual</h2>${S.db?`<div><b>${esc(S.db.mes)}</b>${S.db.fecha?`<div class="muted" style="font-size:12px">Cargada el ${ftime(S.db.fecha)}${S.db.archivo?" · "+esc(S.db.archivo):""}</div>`:""}<div class="mono" style="margin-top:6px">${PUNTOS.filter(p=>!p.baja).length} puntos activos</div></div>`:`<div class="muted">Aún no se ha cargado ninguna base.</div>`}
+     ${hist.length?`<h2 style="margin-top:16px">Historial de cargas</h2><ul class="feed">${hist.map(x=>`<li><span class="dot"></span><div>${esc(x.mes)} · ${x.n} puntos<div class="muted" style="font-size:12px">${x.nu} nuevos · ${x.up} actualizados · ${x.baja} fuera · ${esc(x.by)} · ${ftime(x.t)}</div></div></li>`).join("")}</ul>`:""}</div></div></div>`;
+  $("#cpc").onclick=()=>copy(link);
+  $("#dbf").onchange=async e=>{const f=e.target.files[0];if(!f)return;const box=$("#prev");box.innerHTML=`<div class="muted">Leyendo el archivo…</div>`;
+    try{PEND=await parseDB(f)}catch(err){PEND=null;box.innerHTML=`<div class="notice" style="color:var(--bad)" role="alert">${esc(err.message)}</div>`;return}
+    prevDB()};
+  if(PEND)prevDB();
+}
+function prevDB(){
+  const P=PEND,box=$("#prev");if(!P||!box)return;
+  const old=new Map(S.puntos.map(p=>[p.k||p.id,p])),seen=new Set(),nuevos=[],cambios=[];let iguales=0;
+  P.pts.forEach(p=>{seen.add(p.k);const o=old.get(p.k);if(!o||o.baja&&false){nuevos.push(p);return}
+    const ch=DIFF.filter(f=>String(o[f]??"")!==String(p[f]??""));if(ch.length)cambios.push({p,o,ch});else iguales++});
+  const fuera=S.puntos.filter(o=>!o.baja&&!seen.has(o.k||o.id));
+  const lines=cambios.slice(0,10).map(({p,o,ch})=>`<li><span class="dot"></span><div><b style="font-weight:600">${esc(p.n)}</b><div class="muted" style="font-size:12px">${ch.slice(0,3).map(f=>`${FL[f]}: ${esc(o[f]??"—")} → ${esc(p[f]??"—")}`).join(" · ")}${ch.length>3?` · +${ch.length-3} más`:""}</div></div></li>`).join("");
+  box.innerHTML=`<div class="card" style="background:var(--surface-2);display:flex;flex-direction:column;gap:12px"><div><b>${P.pts.length} puntos leídos</b><div class="muted" style="font-size:12px">Hoja «${esc(P.sheet)}» · ${esc(P.file)}${P.extra.length?` · columnas adicionales: ${esc(P.extra.join(", "))}`:""}</div></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px"><div><b class="mono">${nuevos.length}</b><div class="muted" style="font-size:12px">nuevos</div></div><div><b class="mono">${cambios.length}</b><div class="muted" style="font-size:12px">con cambios</div></div><div><b class="mono">${iguales}</b><div class="muted" style="font-size:12px">sin cambios</div></div><div><b class="mono">${fuera.length}</b><div class="muted" style="font-size:12px">fuera de la base</div></div></div>
+    ${lines?`<div><div class="muted" style="font-size:12px;margin-bottom:6px">Cambios frente a la base actual${cambios.length>10?" (primeros 10)":""}</div><ul class="feed">${lines}</ul></div>`:""}
+    ${fuera.length?`<div class="hint">Los puntos que ya no vienen en el archivo salen de las listas. Si tienen tickets u hoja de vida se conservan marcados como «Fuera de la base»; los demás se eliminan.</div>`:""}
+    ${P.warn.length?`<ul class="hint" style="margin:0;padding-left:18px">${P.warn.slice(0,5).map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}
+    <div class="field"><label for="mes">Mes de la base</label><input id="mes" class="inp" value="${esc(P.mes)}"></div>
+    <div class="tools"><button class="btn primary" id="apl">Aplicar carga</button><button class="btn" id="dsc">Descartar</button></div></div>`;
+  $("#dsc").onclick=()=>{PEND=null;vCargar()};
+  $("#apl").onclick=()=>{const mes=$("#mes").value.trim()||P.mes,r=applyDB(P,mes);PEND=null;S.fp={q:"",z:"",c:"",o:""};S.view="puntos";render();toast(`Base cargada: ${r.nu} nuevos, ${r.up} actualizados`)};
 }
 
 /* ---------- Inventario ---------- */
+const UNIDADES=["und","m","gal","kg","l","caja","rollo"];
+function modalMat(i){
+  formModal(i?"Editar material":"Agregar material",
+   `<div class="field"><label for="mn">Material</label><input id="mn" class="inp" value="${esc(i?i.n:"")}" placeholder="Ej.: Bombillo LED 18 W"></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
+     <div class="field"><label for="mu">Unidad</label><select id="mu" class="inp">${UNIDADES.map(u=>`<option ${i&&i.u===u?"selected":""}>${u}</option>`).join("")}</select></div>
+     <div class="field"><label for="ms">Stock</label><input id="ms" class="inp" type="number" min="0" step="any" value="${i?i.s:0}"></div>
+     <div class="field"><label for="mm">Mínimo</label><input id="mm" class="inp" type="number" min="0" step="any" value="${i?i.min:0}"></div>
+     <div class="field"><label for="mp">Precio unitario</label><input id="mp" class="inp" type="number" min="0" step="any" value="${i?i.p:0}"></div></div>`,
+   i?"Guardar":"Agregar material",()=>{
+    const n=$("#mn").value.trim(),s=parseFloat($("#ms").value),min=parseFloat($("#mm").value),pr=parseFloat($("#mp").value);
+    if(!n)return "Escribe el nombre del material.";
+    if([s,min,pr].some(x=>isNaN(x)||x<0))return "Stock, mínimo y precio deben ser números iguales o mayores a cero.";
+    if(S.inv.some(x=>x!==i&&x.n.toLowerCase()===n.toLowerCase()))return "Ya existe un material con ese nombre.";
+    const o={n,u:$("#mu").value,s,min,p:pr};
+    if(i)Object.assign(i,o);else S.inv.push({id:"i"+Date.now().toString(36),...o});
+    save();render();toast(i?"Material actualizado":"Material agregado")});
+}
 function vInv(){
-  $("#view").innerHTML=`<div class="grid two"><div class="tbl-wrap"><table style="min-width:520px"><thead><tr><th>Material</th><th>Stock</th><th>Mínimo</th><th>Precio unitario</th><th></th></tr></thead><tbody>${S.inv.map(i=>`<tr><td>${esc(i.n)}</td><td class="mono">${i.s} ${i.u}</td><td class="mono muted">${i.min}</td><td class="mono">${cop(i.p)}</td><td>${i.s<=i.min?`<span class="chip c-vencido">Reponer</span>`:`<span class="chip c-cerrado">Bien</span>`}</td></tr>`).join("")}</tbody></table></div>
-   <div class="card"><h2>Movimientos de esta sesión</h2>${S.mov.length?`<ul class="feed">${S.mov.slice(0,8).map(m=>{const it=S.inv.find(x=>x.id===m.i);return `<li><span class="dot"></span><div>${m.q} ${it.u} · ${esc(it.n)}<div class="muted" style="font-size:12px">Por el ticket <span class="mono">${m.tk}</span> · ${ftime(m.t)}</div></div></li>`}).join("")}</ul>`:`<div class="muted">Abre un ticket, registra un material usado y verás aquí el descuento al instante.</div>`}</div></div>`;
+  const adm=lvl("inv")==="editar";
+  $("#view").innerHTML=`<div class="grid two">${S.inv.length?`<div class="tbl-wrap"><table style="min-width:520px"><thead><tr><th>Material</th><th>Stock</th><th>Mínimo</th><th>Precio unitario</th><th></th>${adm?"<th></th>":""}</tr></thead><tbody>${S.inv.map(i=>{const used=S.tickets.some(t=>t.mats.some(m=>m.i===i.id));return `<tr><td>${esc(i.n)}</td><td class="mono">${i.s} ${i.u}</td><td class="mono muted">${i.min}</td><td class="mono">${cop(i.p)}</td><td>${i.s<=i.min?`<span class="chip c-vencido">Reponer</span>`:`<span class="chip c-cerrado">Bien</span>`}</td>${adm?`<td><div class="tools" style="flex-wrap:nowrap"><button class="btn sm" data-em="${i.id}">Editar</button><button class="btn sm" data-dm="${i.id}" ${used?'disabled title="Está usado en tickets"':""}>Eliminar</button></div></td>`:""}</tr>`}).join("")}</tbody></table></div>`:`<div class="card empty">${adm?"El inventario está vacío. Usa «Agregar material» para cargar el primero.":"El inventario está vacío."}</div>`}
+   <div class="card"><h2>Movimientos de esta sesión</h2>${S.mov.length?`<ul class="feed">${S.mov.slice(0,8).map(m=>{const it=S.inv.find(x=>x.id===m.i);return it?`<li><span class="dot"></span><div>${-m.q} ${it.u} · ${esc(it.n)}<div class="muted" style="font-size:12px">Por el ticket <span class="mono">${m.tk}</span> · ${ftime(m.t)}</div></div></li>`:""}).join("")}</ul>`:`<div class="muted">Abre un ticket, registra un material usado y verás aquí el descuento al instante.</div>`}</div></div>`;
+  document.querySelectorAll("[data-em]").forEach(b=>b.onclick=()=>modalMat(S.inv.find(x=>x.id===b.dataset.em)));
+  document.querySelectorAll("[data-dm]").forEach(b=>b.onclick=()=>{const i=S.inv.find(x=>x.id===b.dataset.dm);
+    confirmBox("Eliminar material",`Se eliminará <b>${esc(i.n)}</b> del inventario.`,"Eliminar",()=>{S.inv=S.inv.filter(x=>x!==i);S.mov=S.mov.filter(m=>m.i!==i.id);save();render();toast("Material eliminado")})});
+}
+
+/* ---------- Mapa ---------- */
+let MAPI=null,PLACE=null,MAPQ="";
+const BLANKTILE="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+const TILES=[{u:"https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",a:"© contribuidores de OpenStreetMap © CARTO",o:{subdomains:"abcd"}},{u:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",a:"© contribuidores de OpenStreetMap",o:{}}];
+function loadLeaflet(cb){
+  if(window.L){cb(true);return}
+  if(window.__lfp){window.__lfp.push(cb);return}
+  window.__lfp=[cb];
+  const done=ok=>{const q=window.__lfp;window.__lfp=null;q.forEach(f=>f(ok))};
+  const l=document.createElement("link");l.rel="stylesheet";l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";document.head.appendChild(l);
+  const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";s.onload=()=>done(!!window.L);s.onerror=()=>done(false);document.head.appendChild(s);
+}
+const hasLoc=p=>p.lat!=null&&p.lng!=null&&p.lat!==""&&!isNaN(p.lat)&&!isNaN(p.lng);
+function pinInfo(p){const T=vis().filter(t=>t.punto===p.id&&isOpen(t));return {n:T.length,cls:T.some(overdue)?"bad":T.length?"warn":"ok"}}
+function vMapa(){
+  if(MAPI){try{MAPI.remove()}catch(e){}MAPI=null}
+  const L0=ptsVis(),adm=can("configurar"),con=L0.filter(hasLoc);
+  if(!L0.length){$("#view").innerHTML=`<div class="card empty">${can("cargarbase")?"Aún no hay puntos de servicio. Carga la base mensual en «Puntos de servicio» y ubícalos aquí.":"No tienes puntos de servicio asignados."}</div>`;return}
+  $("#view").innerHTML=`<div class="grid two"><div class="card" style="padding:0;overflow:hidden;position:relative"><div id="map" role="region" aria-label="Mapa de puntos de servicio"></div><div id="mapmsg" class="notice" style="position:absolute;left:12px;right:12px;bottom:26px;z-index:500;display:none"></div></div>
+   <div class="card" style="display:flex;flex-direction:column;gap:10px;max-height:620px"><h2 style="margin:0">Puntos <span class="muted mono" style="font-weight:400">${con.length}/${L0.length} ubicados</span></h2>
+    <input id="mq" class="inp" type="search" placeholder="Buscar punto, zona o ciudad" value="${esc(MAPQ)}" aria-label="Buscar punto"><ul class="feed" id="mlist" style="overflow:auto;min-height:0;flex:1"></ul>
+    <p class="hint" style="margin:0">El número es la cantidad de tickets abiertos. Verde: sin pendientes. Ámbar: con pendientes. Rojo: con fuera de plazo.${adm?" La ubicación no viene en la base mensual: usa «Ubicar» en cada punto (se conserva en las próximas cargas) y arrastra el marcador para corregirla.":""}</p></div></div>`;
+  const msg=(t,btn)=>{const m=$("#mapmsg");if(!t){m.style.display="none";return}m.style.display="block";m.innerHTML=esc(t)+(btn?` <button class="btn sm" id="mcx">Cancelar</button>`:"");if(btn)$("#mcx").onclick=()=>{PLACE=null;vMapa()}};
+  const list=()=>{const q=MAPQ.trim().toLowerCase();
+    const R=L0.filter(p=>!q||[p.n,p.zona,p.sub,p.c,p.cc].join(" ").toLowerCase().includes(q)).sort((a,b)=>(hasLoc(b)-hasLoc(a))||String(a.n).localeCompare(String(b.n),"es"));
+    $("#mlist").innerHTML=R.slice(0,150).map(p=>{const i=pinInfo(p);return `<li style="display:flex;align-items:center;gap:10px">${hasLoc(p)?`<span class="pin ${i.cls}" style="flex:none;width:26px;height:26px;font-size:11px">${i.n}</span>`:`<span class="dot" style="flex:none;background:var(--line-strong)"></span>`}<div style="min-width:0"><b style="font-weight:600">${esc(p.n)}</b><div class="muted" style="font-size:12px">${esc(p.zona?p.zona+" · ":"")}${esc(p.c)}</div></div>${hasLoc(p)?`<button class="btn sm" style="margin-left:auto" data-fly="${p.id}">Ver</button>`:adm?`<button class="btn sm" style="margin-left:auto" data-loc="${p.id}">Ubicar</button>`:`<span class="muted" style="margin-left:auto;font-size:12px">Sin ubicar</span>`}</li>`}).join("")||`<li class="muted">Ningún punto coincide.</li>`;
+    if(R.length>150)$("#mlist").insertAdjacentHTML("beforeend",`<li class="muted">Se muestran 150 de ${R.length}; usa el buscador.</li>`)};
+  list();$("#mq").oninput=e=>{MAPQ=e.target.value;list()};
+  loadLeaflet(ok=>{
+    const el=$("#map");if(!el||S.view!=="mapa")return;
+    if(!ok||!con.length&&!PLACE){mapFallback(el,con);if(!ok)msg("No se pudo cargar el mapa base; se muestra la posición relativa.");else if(!con.length)msg("Aún no hay puntos ubicados. Usa «Ubicar» en la lista.");return}
+    const m=MAPI=L.map(el,{scrollWheelZoom:false});let ti=0,layer,okT=0,errT=0;
+    const addTiles=()=>{const T=TILES[ti];layer=L.tileLayer(T.u,{maxZoom:19,attribution:T.a,errorTileUrl:BLANKTILE,...T.o}).addTo(m);okT=0;errT=0;
+      layer.on("tileload",()=>{okT++;if(okT===1)msg(PLACE?"Haz clic en el mapa donde queda "+pt(PLACE).n+".":"",!!PLACE)});
+      layer.on("tileerror",()=>{errT++;if(!okT&&errT===4){if(ti<TILES.length-1){m.removeLayer(layer);ti++;addTiles()}else msg("No se pudieron cargar los mosaicos del mapa (los bloquea la red, un firewall o una extensión del navegador). Los marcadores siguen funcionando.")}})};
+    addTiles();
+    const mk={};
+    con.forEach(p=>{const i=pinInfo(p);
+      const k=L.marker([p.lat,p.lng],{draggable:adm,icon:L.divIcon({className:"",html:`<div class="pin ${i.cls}">${i.n}</div>`,iconSize:[30,30],iconAnchor:[15,15]}),title:p.n}).addTo(m);
+      k.bindPopup(`<b>${esc(p.n)}</b><br>${esc(p.zona?p.zona+" · ":"")}${esc(p.c)}${p.dir?"<br>"+esc(p.dir):""}<br>${i.n} ticket(s) abierto(s)<div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm" data-mt="${p.id}">Ver tickets</button>${lvl("hv")!=="ninguno"?`<button class="btn sm" data-mh="${p.id}">Hoja de vida</button>`:""}</div>`);
+      if(adm)k.on("dragend",()=>{const c=k.getLatLng();p.lat=+c.lat.toFixed(6);p.lng=+c.lng.toFixed(6);save();toast("Ubicación actualizada")});
+      mk[p.id]=k});
+    if(con.length)m.fitBounds(L.latLngBounds(con.map(p=>[p.lat,p.lng])),{padding:[40,40],maxZoom:15});else m.setView([4.65,-74.08],11);
+    if(PLACE){el.style.cursor="crosshair";msg("Haz clic en el mapa donde queda "+pt(PLACE).n+".",true);
+      m.on("click",e=>{const q=pt(PLACE);q.lat=+e.latlng.lat.toFixed(6);q.lng=+e.latlng.lng.toFixed(6);PLACE=null;save();toast("Ubicación guardada");vMapa()})}
+    $("#mlist").onclick=e=>{const f=e.target.closest("[data-fly]"),l=e.target.closest("[data-loc]");
+      if(f){const q=pt(f.dataset.fly);m.flyTo([q.lat,q.lng],16);mk[q.id].openPopup()}
+      if(l)modalUbicar(pt(l.dataset.loc))};
+    el.addEventListener("click",e=>{const a=e.target.closest("[data-mt]"),b=e.target.closest("[data-mh]");
+      if(a){const q=pt(a.dataset.mt);S.f.q=q.n;S.f.e="todos";S.f.t="todos";S.view="tickets";render()}
+      if(b){S.view="hv";S.hvSel=b.dataset.mh;render()}});
+  });
+  if(!window.L)$("#mlist").onclick=e=>{const l=e.target.closest("[data-loc]");if(l)modalUbicar(pt(l.dataset.loc))};
+}
+function mapFallback(el,con){
+  if(!con.length){el.innerHTML=`<div class="empty">Ningún punto tiene ubicación todavía.</div>`;return}
+  const la=con.map(p=>p.lat),lo=con.map(p=>p.lng),a0=Math.min(...la),a1=Math.max(...la),o0=Math.min(...lo),o1=Math.max(...lo);
+  const W=700,H=520,pad=60,x=v=>o1===o0?W/2:pad+(v-o0)/(o1-o0)*(W-2*pad),y=v=>a1===a0?H/2:H-pad-(v-a0)/(a1-a0)*(H-2*pad);
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%" role="img" aria-label="Ubicación relativa de los puntos"><rect width="${W}" height="${H}" fill="var(--surface-2)"/>${con.map(p=>{const i=pinInfo(p),c={bad:"#b3261e",warn:"#8f5f00",ok:"#1d7a4b"}[i.cls];
+    return `<circle cx="${x(p.lng)}" cy="${y(p.lat)}" r="14" fill="${c}" stroke="#fff" stroke-width="2"/><text x="${x(p.lng)}" y="${y(p.lat)+4}" text-anchor="middle" font-size="12" fill="#fff" font-family="var(--font-mono)">${i.n}</text><text x="${x(p.lng)}" y="${y(p.lat)+30}" text-anchor="middle" font-size="11" fill="var(--fg)">${esc(p.n)}</text>`}).join("")}</svg>`;
+}
+
+/* ---------- Hojas de vida ---------- */
+const ESTADO_HV=[["","—"],["B","Bueno"],["R","Regular"],["M","Malo"],["NA","N.A."]];
+const hvGet=(id,mk)=>S.hv[id]||(mk?(S.hv[id]={g:{},it:{},prev:[],corr:[],fotos:{},tr:"",ob:""}):{g:{},it:{},prev:[],corr:[],fotos:{},tr:"",ob:""});
+const hvTotal=()=>S.hvTpl.secs.reduce((a,s)=>a+s.items.length,0);
+const hvDone=id=>{const d=hvGet(id);let n=0;S.hvTpl.secs.forEach(s=>s.items.forEach(x=>{if(d.it[x.id]&&d.it[x.id].e)n++}));return n};
+const hvPct=id=>{const t=hvTotal();return t?Math.round(hvDone(id)/t*100):0};
+let hvT;const hvSoon=()=>{clearTimeout(hvT);hvT=setTimeout(save,300)};
+function readImg(file,max,cb){
+  const im=new Image(),u=URL.createObjectURL(file);
+  im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);cb(c.toDataURL("image/jpeg",.72))};
+  im.onerror=()=>{URL.revokeObjectURL(u);toast("No se pudo leer la imagen")};im.src=u;
+}
+function vHV(){
+  if(S.hvEdit&&can("configurar"))return vHVTpl();
+  if(S.hvSel&&pt(S.hvSel)&&inScope(me(),S.hvSel))return vHVForm();
+  S.hvSel=null;
+  const L=ptsVis(),adm=can("configurar");
+  const rowsHV=q=>L.filter(p=>!q||[p.n,p.cc,p.zona,p.c].join(" ").toLowerCase().includes(q)).sort((a,b)=>String(a.n).localeCompare(String(b.n),"es")).slice(0,300).map(p=>{const d=hvGet(p.id),pc=hvPct(p.id);
+    return `<tr><td><b style="font-weight:600">${esc(p.n)}</b></td><td>${esc(p.c)}</td><td><div style="display:flex;align-items:center;gap:8px"><div class="bar"><i style="width:${pc}%"></i></div><span class="mono muted">${pc}%</span></div></td><td>${esc(d.g.elaboro||"—")}</td><td class="muted">${d.upd?ftime(d.upd):"Sin iniciar"}</td><td><button class="btn sm" data-hv="${p.id}">${lvl("hv")==="editar"?"Abrir":"Ver"}</button></td></tr>`}).join("")||`<tr><td colspan="6" class="muted">Ningún punto coincide.</td></tr>`;
+  $("#view").innerHTML=`<div class="grid"><div class="tools">${adm?'<button class="btn" id="tpl">Editar plantilla de la hoja de vida</button>':""}<input class="inp" id="hq" type="search" placeholder="Buscar punto" style="max-width:260px" aria-label="Buscar punto"><span class="hint">Tu acceso a este módulo: <b>${NIVEL[lvl("hv")]}</b>.</span></div>
+   ${L.length?`<div class="tbl-wrap"><table><thead><tr><th>Punto</th><th>Ciudad</th><th>Avance</th><th>Elaboró</th><th>Actualizada</th><th></th></tr></thead><tbody id="hvb2">${rowsHV("")}</tbody></table></div>`:`<div class="card empty">Aún no hay puntos de servicio. Carga la base mensual en «Puntos de servicio».</div>`}</div>`;
+  const bind=()=>document.querySelectorAll("[data-hv]").forEach(b=>b.onclick=()=>{S.hvSel=b.dataset.hv;render()});
+  if($("#hq"))$("#hq").oninput=e=>{$("#hvb2").innerHTML=rowsHV(e.target.value.trim().toLowerCase());bind()};
+  bind();
+  if($("#tpl"))$("#tpl").onclick=()=>{S.hvEdit=true;render()};
+}
+function hvRer(){const y=scrollY,o=[...document.querySelectorAll("details.hvs")].map(d=>d.open);vHVForm();document.querySelectorAll("details.hvs").forEach((d,i)=>{if(o[i]!==undefined)d.open=o[i]});scrollTo(0,y)}
+function vHVForm(){
+  const id=S.hvSel,p=pt(id),d=hvGet(id),ed=lvl("hv")==="editar",ds=ed?"":"disabled";
+  const g=(k,l,type,val,extra)=>`<div class="field"><label for="g_${k}">${l}</label><input id="g_${k}" class="inp" type="${type||"text"}" data-g="${k}" value="${esc(val??d.g[k]??"")}" ${ds} ${extra||""}></div>`;
+  const sel=(k,l,opts)=>`<div class="field"><label for="g_${k}">${l}</label><select id="g_${k}" class="inp" data-g="${k}" ${ds}><option value="">—</option>${opts.map(o=>`<option ${d.g[k]===o?"selected":""}>${o}</option>`).join("")}</select></div>`;
+  let n=0;
+  const secs=S.hvTpl.secs.map(s=>{const done=s.items.filter(x=>d.it[x.id]&&d.it[x.id].e).length;
+    return `<details class="hvs"><summary><span>${esc(s.t)}</span><span class="muted mono" data-sc="${s.id}">${done}/${s.items.length}</span></summary><div class="in"><div class="tbl-wrap"><table style="min-width:780px"><thead><tr><th style="width:42px">N°</th><th>Aspecto a evaluar</th><th style="width:120px">Estado</th><th style="width:80px">Cant.</th><th style="width:130px">Unidad / medidas</th><th>Observaciones</th></tr></thead><tbody>${s.items.map(x=>{n++;const v=d.it[x.id]||{};
+     return `<tr><td class="mono muted">${n}</td><td>${esc(x.t)}</td><td><select class="inp" data-it="${x.id}" data-f="e" aria-label="Estado: ${esc(x.t)}" ${ds}>${ESTADO_HV.map(([a,b])=>`<option value="${a}" ${v.e===a?"selected":""}>${b}</option>`).join("")}</select></td>
+      <td><input class="inp" data-it="${x.id}" data-f="c" value="${esc(v.c||"")}" aria-label="Cantidad: ${esc(x.t)}" ${ds}></td><td><input class="inp" data-it="${x.id}" data-f="u" value="${esc(v.u||"")}" aria-label="Unidad: ${esc(x.t)}" ${ds}></td><td><input class="inp" data-it="${x.id}" data-f="o" value="${esc(v.o||"")}" aria-label="Observaciones: ${esc(x.t)}" ${ds}></td></tr>`}).join("")}</tbody></table></div></div></details>`}).join("");
+  const rows=(k,cols)=>`<div class="tbl-wrap"><table style="min-width:780px"><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join("")}<th style="width:60px"></th></tr></thead><tbody>${(d[k]).map((r,i)=>`<tr>${cols.map(([f,,t])=>`<td><input class="inp" type="${t||"text"}" data-row="${k}" data-i="${i}" data-f="${f}" value="${esc(r[f]||"")}" aria-label="${esc(cols.find(c=>c[0]===f)[1])}" ${ds}></td>`).join("")}<td>${ed?`<button class="btn sm noprint" data-delrow="${k}:${i}" aria-label="Quitar fila">Quitar</button>`:""}</td></tr>`).join("")||`<tr><td colspan="${cols.length+1}" class="muted">Sin registros.</td></tr>`}</tbody></table></div>${ed?`<div><button class="btn sm noprint" data-addrow="${k}">Agregar fila</button></div>`:""}`;
+  const img=(key,label,src)=>`<div class="imgbox"><b style="font-weight:600">${esc(label)}</b>${src?`<img src="${src}" alt="${esc(label)}">`:`<span class="muted">Sin imagen</span>`}${ed?`<div class="tools noprint"><input type="file" accept="image/*" data-img="${key}" aria-label="Subir imagen: ${esc(label)}" style="max-width:100%">${src?`<button class="btn sm" data-rmimg="${key}">Quitar</button>`:""}</div>`:""}</div>`;
+  const tks=S.tickets.filter(t=>t.punto===id);
+  $("#view").innerHTML=`<div class="grid">
+   <div class="tools noprint"><button class="btn" id="hvb">← Volver a la lista</button><button class="btn" id="hvp2">Imprimir o guardar en PDF</button><span class="hint">${ed?"Los cambios se guardan solos. Ningún campo es obligatorio.":"Tienes acceso de solo lectura a este módulo."}</span></div>
+   <div class="card"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><h2 style="margin:0;font-size:20px;color:var(--fg)">${esc(p.n)}</h2><div class="muted">${esc(p.c)}${p.dir?" · "+esc(p.dir):""}</div></div>
+    <div style="display:flex;align-items:center;gap:10px"><div class="bar" style="width:140px"><i id="hvbar" style="width:${hvPct(id)}%"></i></div><span class="mono" id="hvpct">${hvDone(id)}/${hvTotal()} · ${hvPct(id)}%</span></div></div></div>
+   <details class="hvs" open><summary><span>Datos generales</span></summary><div class="in"><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">
+     <div class="field"><label>Nombre del punto de servicio</label><input class="inp" value="${esc(p.n)}" disabled></div>
+     ${g("dir","Dirección","text",p.dir||"")}${g("cc","Centro de costo","text",p.cc||"")}
+     ${g("creacion","Fecha de creación de la hoja","date")}${g("apertura","Fecha de apertura del punto","date")}${g("cierre","Fecha de entrega o cierre del punto","date")}
+     ${g("elaboro","Elaboró","text")}${sel("cond","Condición",["Cubierto","Descubierto"])}${g("url","URL (enlace de referencia)","url")}
+     ${sel("auto","Sistema automatizado",["Sí","No"])}${g("empresa","Empresa del sistema","text")}${g("ch","N° de cuenta hidráulica","text")}${g("ce","N° de cuenta eléctrica","text")}${g("kva","kVa","text")}</div></div></details>
+   ${secs}
+   <details class="hvs"><summary><span>Croquis</span></summary><div class="in">${img("croquis","Croquis del punto",d.croquis)}</div></details>
+   <details class="hvs"><summary><span>Trabajos a realizar y observaciones</span></summary><div class="in">
+     <div class="field"><label for="tx_tr">Trabajos a realizar</label><textarea id="tx_tr" class="inp" data-tx="tr" ${ds}>${esc(d.tr||"")}</textarea></div>
+     <div class="field"><label for="tx_ob">Observaciones</label><textarea id="tx_ob" class="inp" data-tx="ob" ${ds}>${esc(d.ob||"")}</textarea></div></div></details>
+   <details class="hvs"><summary><span>Trabajos preventivos realizados</span><span class="muted mono">${d.prev.length}</span></summary><div class="in">${rows("prev",[["t","Trabajo realizado"],["i","Fecha de inicio","date"],["f","Fecha de finalización","date"],["r","Responsable"],["p","Próximo mantenimiento","date"]])}</div></details>
+   <details class="hvs"><summary><span>Trabajos correctivos realizados</span><span class="muted mono">${d.corr.length}</span></summary><div class="in">${rows("corr",[["t","Trabajo realizado"],["i","Fecha de inicio","date"],["f","Fecha de finalización","date"],["r","Responsable"],["o","Observaciones"]])}</div></details>
+   <details class="hvs"><summary><span>Registro fotográfico</span></summary><div class="in"><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">${S.hvTpl.fotos.map(f=>img("f:"+f.id,f.t,(d.fotos||{})[f.id])).join("")}</div></div></details>
+   <details class="hvs"><summary><span>Tickets de este punto (automático)</span><span class="muted mono">${tks.length}</span></summary><div class="in">${tks.length?`<div class="tbl-wrap"><table style="min-width:520px"><thead><tr><th>Ticket</th><th>Novedad</th><th>Estado</th><th>Antigüedad</th></tr></thead><tbody>${tks.map(t=>`<tr class="row" data-ot="${t.id}" tabindex="0"><td class="mono">${t.id}</td><td>${esc(t.nov)}</td><td>${chipE(t.est)}</td><td class="muted">${ago(t.created)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="muted">Este punto aún no tiene tickets. Los que se reporten aparecerán aquí, ligados a su hoja de vida.</div>`}</div></details>
+  </div>`;
+  const root=$("#view"),touch=()=>{const x=hvGet(id,true);x.upd=Date.now();hvSoon()};
+  const prog=()=>{const t=hvTotal(),n=hvDone(id),pc=t?Math.round(n/t*100):0;$("#hvpct").textContent=`${n}/${t} · ${pc}%`;$("#hvbar").style.width=pc+"%";
+    S.hvTpl.secs.forEach(s=>{const e=root.querySelector(`[data-sc="${s.id}"]`);if(e)e.textContent=s.items.filter(x=>hvGet(id).it[x.id]&&hvGet(id).it[x.id].e).length+"/"+s.items.length})};
+  const onEdit=e=>{if(!ed)return;const t=e.target,x=hvGet(id,true);
+    if(t.dataset.g){const k=t.dataset.g;if(k==="dir")p.dir=t.value;else if(k==="cc")p.cc=t.value;else{x.g[k]=t.value}touch()}
+    else if(t.dataset.it){const o=x.it[t.dataset.it]||(x.it[t.dataset.it]={});o[t.dataset.f]=t.value;touch();if(t.dataset.f==="e")prog()}
+    else if(t.dataset.tx){x[t.dataset.tx]=t.value;touch()}
+    else if(t.dataset.row){x[t.dataset.row][+t.dataset.i][t.dataset.f]=t.value;touch()}};
+  root.oninput=onEdit;root.onchange=e=>{onEdit(e);const t=e.target;
+    if(t.dataset.img&&t.files&&t.files[0]){const key=t.dataset.img;readImg(t.files[0],key==="croquis"?1200:900,u=>{const x=hvGet(id,true),old=key==="croquis"?x.croquis:x.fotos[key.slice(2)];
+      if(key==="croquis")x.croquis=u;else x.fotos[key.slice(2)]=u;x.upd=Date.now();
+      try{localStorage.setItem(KEY,JSON.stringify(S))}catch(err){if(key==="croquis")x.croquis=old;else x.fotos[key.slice(2)]=old;toast("No hay espacio en el navegador para esta imagen. En la versión real se guardan en el servidor.");return}
+      hvRer()})}};
+  root.onclick=e=>{const t=e.target.closest("button,tr.row");if(!t)return;const x=hvGet(id,true);
+    if(t.id==="hvb"){S.hvSel=null;render()}
+    else if(t.id==="hvp2"){document.querySelectorAll("details.hvs").forEach(z=>z.open=true);setTimeout(()=>print(),50)}
+    else if(t.dataset.addrow&&ed){x[t.dataset.addrow].push({});touch();save();hvRer()}
+    else if(t.dataset.delrow&&ed){const [k,i]=t.dataset.delrow.split(":");x[k].splice(+i,1);touch();save();hvRer()}
+    else if(t.dataset.rmimg&&ed){const k=t.dataset.rmimg;if(k==="croquis")delete x.croquis;else delete x.fotos[k.slice(2)];touch();save();hvRer()}
+    else if(t.dataset.ot){S.view="tickets";S.sel=t.dataset.ot;render()}};
+}
+function vHVTpl(){
+  const T=S.hvTpl;
+  $("#view").innerHTML=`<div class="grid"><div class="tools"><button class="btn primary" id="tdone">Listo</button><button class="btn" id="tadd">Agregar sección</button><button class="btn bad" id="trst">Restaurar plantilla de parqueaderos</button></div>
+   <p class="hint" style="margin:0">Aquí defines qué se evalúa en cada punto. Si cambias el nombre de un aspecto, los datos ya registrados se conservan. Si lo eliminas, esos datos dejan de mostrarse. Sirve igual para restaurantes u otros negocios: crea tus propias secciones.</p>
+   ${T.secs.map(s=>`<div class="card"><div class="tools" style="flex-wrap:nowrap"><input class="inp" data-st="${s.id}" value="${esc(s.t)}" aria-label="Nombre de la sección" style="font-weight:600"><button class="btn sm bad" data-ds="${s.id}">Eliminar sección</button></div>
+    <ul class="feed" style="margin-top:12px">${s.items.map(x=>`<li style="display:flex;gap:8px;align-items:center"><input class="inp" data-ti="${x.id}" value="${esc(x.t)}" aria-label="Aspecto a evaluar"><button class="btn sm" data-di="${s.id}:${x.id}" aria-label="Eliminar aspecto">Quitar</button></li>`).join("")}</ul>
+    <div style="margin-top:10px"><button class="btn sm" data-ai="${s.id}">Agregar aspecto</button></div></div>`).join("")}
+   <div class="card"><h2>Registro fotográfico: espacios a fotografiar</h2><ul class="feed">${T.fotos.map(f=>`<li style="display:flex;gap:8px;align-items:center"><input class="inp" data-tf="${f.id}" value="${esc(f.t)}" aria-label="Espacio a fotografiar"><button class="btn sm" data-df="${f.id}">Quitar</button></li>`).join("")}</ul><div style="margin-top:10px"><button class="btn sm" id="taf">Agregar espacio</button></div></div></div>`;
+  const root=$("#view"),re=()=>{const y=scrollY;save();vHVTpl();scrollTo(0,y)};
+  root.oninput=e=>{const t=e.target;
+    if(t.dataset.st){T.secs.find(s=>s.id===t.dataset.st).t=t.value}
+    else if(t.dataset.ti){T.secs.forEach(s=>s.items.forEach(x=>{if(x.id===t.dataset.ti)x.t=t.value}))}
+    else if(t.dataset.tf){T.fotos.find(f=>f.id===t.dataset.tf).t=t.value}
+    hvSoon()};
+  root.onclick=e=>{const t=e.target.closest("button");if(!t)return;const nid=p=>p+(T.n++);
+    if(t.id==="tdone"){save();S.hvEdit=false;render()}
+    else if(t.id==="tadd"){T.secs.push({id:nid("s"),t:"Nueva sección",items:[{id:nid("i"),t:"Nuevo aspecto"}]});re()}
+    else if(t.id==="taf"){T.fotos.push({id:nid("f"),t:"Nuevo espacio"});re()}
+    else if(t.id==="trst")confirmBox("Restaurar plantilla","Se reemplazan las secciones y aspectos actuales por los de la plantilla de parqueaderos. Las respuestas ya registradas de aspectos que cambien dejarán de mostrarse.","Restaurar",()=>{S.hvTpl=tpl();save();vHVTpl()});
+    else if(t.dataset.ai){T.secs.find(s=>s.id===t.dataset.ai).items.push({id:nid("i"),t:"Nuevo aspecto"});re()}
+    else if(t.dataset.di){const [a,b]=t.dataset.di.split(":"),s=T.secs.find(s=>s.id===a);s.items=s.items.filter(x=>x.id!==b);re()}
+    else if(t.dataset.ds){const s=T.secs.find(s=>s.id===t.dataset.ds);confirmBox("Eliminar sección",`Se eliminará <b>${esc(s.t)}</b> con sus ${s.items.length} aspectos.`,"Eliminar",()=>{T.secs=T.secs.filter(x=>x!==s);save();vHVTpl()})}
+    else if(t.dataset.df){T.fotos=T.fotos.filter(f=>f.id!==t.dataset.df);re()}};
 }
 
 /* ---------- Ecosistema ---------- */
@@ -519,39 +899,63 @@ function vEco(){
 function vUsuarios(){
   const RK=Object.keys(ROLE_DEF),EC={Activo:"c-cerrado",Inactivo:"c-noprocede",Pendiente:"c-espera"};
   $("#view").innerHTML=`<div class="grid">
-   <div class="tbl-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Alcance</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead><tbody>${S.users.map(u=>`<tr>
+   <div class="tbl-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Alcance y módulos</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead><tbody>${S.users.map(u=>`<tr>
     <td><b style="font-weight:600">${esc(u.n)}</b><div class="muted" style="font-size:12px">${esc(u.e)}</div></td>
     <td><select class="inp rsel" style="min-width:230px" data-u="${u.id}" aria-label="Rol de ${esc(u.n)}" ${u.id===S.me?'disabled title="No puedes cambiar tu propio rol"':""}>${RK.map(k=>`<option value="${k}" ${u.rol===k?"selected":""}>${ROLE_DEF[k].l}</option>`).join("")}</select></td>
-    <td style="max-width:240px">${esc(alcance(u))}</td><td><span class="chip ${EC[u.est]}">${u.est}</span></td><td class="muted">${esc(u.acc)}</td>
-    <td>${u.id===S.me?"":`<button class="btn sm" data-t="${u.id}">${u.est==="Inactivo"?"Activar":"Desactivar"}</button>`}</td></tr>`).join("")}</tbody></table></div>
+    <td style="max-width:260px">${esc(alcance(u))}<div class="muted" style="font-size:12px">Hoja de vida: ${NIVEL[mods(u).hv]} · Inventario: ${NIVEL[mods(u).inv]}</div></td><td><span class="chip ${EC[u.est]}">${u.est}</span></td><td class="muted">${esc(u.acc)}</td>
+    <td><div class="tools" style="flex-wrap:nowrap"><button class="btn sm" data-eu="${u.id}">Editar</button>${u.id===S.me?"":`<button class="btn sm" data-t="${u.id}">${u.est==="Inactivo"?"Activar":"Desactivar"}</button><button class="btn sm" data-du="${u.id}">Eliminar</button>`}</div></td></tr>`).join("")}</tbody></table></div>
    <div class="grid two">
     <div class="card"><h2>Qué puede hacer cada rol</h2><div class="tbl-wrap"><table class="mx" style="min-width:520px"><thead><tr><th>Acción</th>${RK.map(k=>`<th>${ROLE_DEF[k].l.split(" (")[0]}</th>`).join("")}</tr></thead><tbody>${ACCIONES.map(([a,l])=>`<tr><td>${l}</td>${RK.map(k=>`<td>${ROLE_DEF[k].can.includes(a)?'<span class="yes" aria-label="Sí">Sí</span>':'<span class="no" aria-label="No">—</span>'}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
-     <p class="hint" style="margin:12px 0 0">Cada usuario además tiene un alcance: solo ve los puntos que se le asignan. Un cliente, por ejemplo, ve únicamente sus sedes. En la versión real estos permisos se aplican en el servidor, no solo en pantalla.</p></div>
-    <div class="card"><h2>Registro de cambios de acceso</h2>${S.audit.length?`<ul class="feed">${S.audit.slice(0,8).map(a=>`<li><span class="dot"></span><div>${esc(a.x)}<div class="muted" style="font-size:12px">${ftime(a.t)}</div></div></li>`).join("")}</ul>`:`<div class="muted">Aquí queda quién cambió roles o accesos. Cambia el rol de alguien o invita a una persona y aparecerá.</div>`}</div>
+     <p class="hint" style="margin:12px 0 0">Cada usuario además tiene un alcance: solo ve los puntos que se le asignan. Y el administrador decide, usuario por usuario, quién accede a Hojas de vida e Inventario (sin acceso, solo ver, ver y editar). Un cliente, por ejemplo, ve únicamente sus sedes. En la versión real estos permisos se aplican en el servidor, no solo en pantalla.</p></div>
+    <div class="grid">
+     <div class="card"><h2>Registro de cambios de acceso</h2>${S.audit.length?`<ul class="feed">${S.audit.slice(0,8).map(a=>`<li><span class="dot"></span><div>${esc(a.x)}<div class="muted" style="font-size:12px">${ftime(a.t)}</div></div></li>`).join("")}</ul>`:`<div class="muted">Aquí queda quién cambió roles o accesos.</div>`}</div>
+     ${can("configurar")?`<div class="card"><h2>Datos de la cuenta</h2><p class="hint" style="margin:0 0 12px">Para preparar la herramienta para un cliente nuevo. Estas acciones no se pueden deshacer.</p><div class="tools"><button class="btn" id="d1">Borrar todos los tickets</button><button class="btn bad" id="d2">Empezar vacío</button><button class="btn" id="d3">Cargar datos de ejemplo</button></div></div>`:""}
+    </div>
    </div></div>`;
-  document.querySelectorAll(".rsel").forEach(s=>s.onchange=e=>{const u=S.users.find(x=>x.id===s.dataset.u),old=u.rol;u.rol=e.target.value;
+  document.querySelectorAll(".rsel").forEach(s=>s.onchange=e=>{const u=S.users.find(x=>x.id===s.dataset.u),old=u.rol;u.rol=e.target.value;delete u.mods;if(u.rol==="Administrador")u.pts="all";
     logA(`${meName()} cambió el rol de ${u.n}: ${ROLE_DEF[old].l} → ${ROLE_DEF[u.rol].l}`);save();renderTools();vUsuarios();toast("Rol actualizado")});
+  document.querySelectorAll("[data-eu]").forEach(b=>b.onclick=()=>modalUser(S.users.find(x=>x.id===b.dataset.eu)));
   document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{const u=S.users.find(x=>x.id===b.dataset.t);u.est=u.est==="Inactivo"?"Activo":"Inactivo";
     logA(`${meName()} ${u.est==="Activo"?"activó":"desactivó"} a ${u.n}`);save();renderTools();vUsuarios();toast(u.est==="Activo"?"Usuario activado":"Usuario desactivado")});
+  document.querySelectorAll("[data-du]").forEach(b=>b.onclick=()=>{const u=S.users.find(x=>x.id===b.dataset.du);
+    confirmBox("Eliminar usuario",`Se eliminará a <b>${esc(u.n)}</b>. Los tickets que reportó o atendió conservan su nombre en el historial.`,"Eliminar",()=>{
+      S.users=S.users.filter(x=>x!==u);logA(`${meName()} eliminó a ${u.n}`);save();renderTools();vUsuarios();toast("Usuario eliminado")})});
+  if($("#d1"))$("#d1").onclick=()=>confirmBox("Borrar todos los tickets",`Se borrarán <b>${S.tickets.length}</b> tickets con su historial. Los materiales registrados vuelven al inventario. Los puntos, usuarios e inventario se conservan.`,"Borrar tickets",()=>{
+    S.tickets.forEach(t=>t.mats.forEach(m=>{const it=S.inv.find(i=>i.id===m.i);if(it)it.s+=m.q}));S.tickets=[];S.mov=[];S.sel=null;save();render();toast("Tickets borrados")});
+  if($("#d2"))$("#d2").onclick=()=>confirmBox("Empezar vacío","Se borrará todo: tickets, puntos de servicio, inventario y usuarios. Quedará solo un Administrador, que podrás renombrar con «Editar».","Borrar todo y empezar vacío",()=>{
+    S=blank();S.view="resumen";save();render();toast("Cuenta vacía lista para configurar")});
+  if($("#d3"))$("#d3").onclick=()=>confirmBox("Cargar datos de ejemplo","Se reemplazará todo lo actual por los datos ficticios de la demostración.","Cargar ejemplo",()=>{
+    S=seed();S.view="resumen";save();render();toast("Datos de ejemplo cargados")});
 }
-function modalInvite(){
-  const m=document.createElement("div");m.className="modal";m.id="modal";
-  m.innerHTML=`<form class="box" id="fi" novalidate role="dialog" aria-modal="true" aria-label="Invitar usuario"><h3 style="margin:0">Invitar usuario</h3>
-   <div class="field"><label for="in">Nombre</label><input id="in" class="inp" placeholder="Nombre y apellido"></div>
-   <div class="field"><label for="ie">Correo</label><input id="ie" class="inp" type="email" placeholder="persona@empresa.com"></div>
-   <div class="field"><label for="ir">Rol</label><select id="ir" class="inp">${Object.keys(ROLE_DEF).map(k=>`<option value="${k}" ${k==="Consulta"?"selected":""}>${ROLE_DEF[k].l}</option>`).join("")}</select><span class="hint" id="id">${ROLE_DEF.Consulta.d}</span></div>
-   <div class="field"><label for="ia">Puntos que podrá ver</label><select id="ia" class="inp"><option value="all">Todos los puntos</option><option>Bogotá</option><option>Medellín</option><option>Cali</option></select></div>
-   <p id="ierr" style="margin:0;color:var(--bad)" role="alert"></p>
-   <div class="tools" style="justify-content:flex-end"><button type="button" class="btn" id="ic">Cancelar</button><button class="btn primary" type="submit">Enviar invitación</button></div></form>`;
-  document.body.appendChild(m);
-  $("#ir").onchange=e=>{$("#id").textContent=ROLE_DEF[e.target.value].d};
-  $("#ic").onclick=closeModal;m.onclick=e=>{if(e.target===m)closeModal()};
-  $("#fi").onsubmit=e=>{e.preventDefault();const n=$("#in").value.trim(),c=$("#ie").value.trim();
-    if(!n||!/^\S+@\S+\.\S+$/.test(c)){$("#ierr").textContent="Escribe el nombre y un correo válido para enviar la invitación.";return}
-    const a=$("#ia").value,pts=a==="all"?"all":PUNTOS.filter(p=>p.c===a).map(p=>p.id),rol=$("#ir").value;
-    S.users.push({id:"u"+Date.now(),n,e:c,rol,pts,est:"Pendiente",acc:"—"});
-    logA(`${meName()} invitó a ${n} como ${ROLE_DEF[rol].l}`);save();closeModal();renderTools();vUsuarios();toast("Invitación registrada (en la versión real sale por correo)")};
-  $("#in").focus();
+function modalUser(u){
+  const self=u&&u.id===S.me,sc=u?u.pts:"all",mode0=sc==="all"?"all":Array.isArray(sc)?"pts":"zonas",act=PUNTOS.filter(p=>!p.baja);
+  const zs=[...new Set(act.map(p=>p.zona).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  formModal(u?"Editar usuario":"Invitar usuario",
+   `<div class="field"><label for="in">Nombre</label><input id="in" class="inp" value="${esc(u?u.n:"")}" placeholder="Nombre y apellido"></div>
+    <div class="field"><label for="ie">Correo</label><input id="ie" class="inp" type="email" value="${esc(u?u.e:"")}" placeholder="persona@empresa.com"></div>
+    <div class="field"><label for="ir">Rol</label><select id="ir" class="inp" ${self?"disabled":""}>${Object.keys(ROLE_DEF).map(k=>`<option value="${k}" ${(u?u.rol:"Consulta")===k?"selected":""}>${ROLE_DEF[k].l}</option>`).join("")}</select><span class="hint" id="ird">${ROLE_DEF[u?u.rol:"Consulta"].d}</span></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">${[["hv","Hojas de vida"],["inv","Inventario"]].map(([k,l])=>`<div class="field"><label for="m_${k}">Acceso a ${l}</label><select id="m_${k}" class="inp" ${self||(u&&u.rol==="Administrador")?"disabled":""}>${Object.keys(NIVEL).map(v=>`<option value="${v}" ${mods(u||{rol:"Consulta"})[k]===v?"selected":""}>${NIVEL[v]}</option>`).join("")}</select></div>`).join("")}</div>
+    <div class="field"><label for="sm">Puntos que podrá ver</label><select id="sm" class="inp"><option value="all" ${mode0==="all"?"selected":""}>Todos los puntos</option><option value="zonas" ${mode0==="zonas"?"selected":""} ${zs.length?"":"disabled"}>Por zonas</option><option value="pts" ${mode0==="pts"?"selected":""} ${act.length?"":"disabled"}>Puntos específicos</option></select>
+     <div id="sz" style="display:none;gap:6px;padding:4px">${zs.map(z=>`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="zc" value="${esc(z)}" ${mode0==="zonas"&&(sc.zonas||[]).includes(z)?"checked":""}> ${esc(z)}</label>`).join("")}</div>
+     <div id="sp" style="display:none;flex-direction:column;gap:8px"><input id="spq" class="inp" type="search" placeholder="Buscar punto" aria-label="Buscar punto"><div style="max-height:200px;overflow:auto;display:grid;gap:6px;padding:4px;border:1px solid var(--line);border-radius:8px">${act.map(p=>`<label class="ipl" data-t="${esc((p.n+" "+p.c+" "+(p.zona||"")).toLowerCase())}" style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="ip" value="${p.id}" ${mode0==="pts"&&sc.includes(p.id)?"checked":""}> ${esc(p.n)} <span class="muted">· ${esc(p.c)}</span></label>`).join("")}</div></div>
+     <span class="hint">Los administradores siempre ven todos los puntos.</span></div>`,
+   u?"Guardar cambios":"Enviar invitación",()=>{
+    const n=$("#in").value.trim(),c=$("#ie").value.trim();
+    if(!n||!/^\S+@\S+\.\S+$/.test(c))return "Escribe el nombre y un correo válido.";
+    if(S.users.some(x=>x!==u&&x.e.toLowerCase()===c.toLowerCase()))return "Ya existe un usuario con ese correo.";
+    const rol=self?u.rol:$("#ir").value;let pts="all";const sm=$("#sm").value;
+    if(rol!=="Administrador"){
+      if(sm==="zonas"){const z=[...document.querySelectorAll(".zc:checked")].map(x=>x.value);if(!z.length)return "Elige al menos una zona.";pts={zonas:z}}
+      else if(sm==="pts"){pts=[...document.querySelectorAll(".ip:checked")].map(x=>x.value);if(!pts.length)return "Elige al menos un punto."}}
+    const mo=rol==="Administrador"?undefined:{hv:$("#m_hv").value,inv:$("#m_inv").value};
+    if(u){Object.assign(u,{n,e:c,rol,pts,mods:mo});logA(`${meName()} editó a ${n} (${ROLE_DEF[rol].l})`)}
+    else{S.users.push({id:"u"+Date.now(),n,e:c,rol,pts,mods:mo,est:"Pendiente",acc:"—"});logA(`${meName()} invitó a ${n} como ${ROLE_DEF[rol].l}`)}
+    save();renderTools();vUsuarios();toast(u?"Usuario actualizado":"Invitación registrada (en la versión real sale por correo)")});
+  const sync=()=>{const m=$("#sm").value;$("#sz").style.display=m==="zonas"?"grid":"none";$("#sp").style.display=m==="pts"?"flex":"none"};
+  $("#sm").onchange=sync;sync();
+  $("#spq").oninput=e=>{const q=e.target.value.trim().toLowerCase();document.querySelectorAll(".ipl").forEach(l=>l.style.display=!q||l.dataset.t.includes(q)?"flex":"none")};
+  const ir=$("#ir");if(ir)ir.onchange=e=>{const r=e.target.value;$("#ird").textContent=ROLE_DEF[r].d;const d=mods({rol:r});["hv","inv"].forEach(k=>{$("#m_"+k).value=d[k];$("#m_"+k).disabled=r==="Administrador"})};
 }
+if(location.hash==="#cargar-base"&&can("cargarbase"))S.view="cargar";
 render();
 </script>
