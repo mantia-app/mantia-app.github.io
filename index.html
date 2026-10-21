@@ -178,7 +178,7 @@ details.hvs>.in{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
       <div><b>Mantia</b><small>Gestión de operaciones</small></div>
     </div>
     <nav class="nav" id="nav" aria-label="Módulos"></nav>
-    <div class="demo-note">Versión de prueba. Los datos que ingreses quedan solo en este navegador.</div>
+    <div class="demo-note">Versión de prueba · v7.6. Los datos que ingreses quedan solo en este navegador.</div>
   </aside>
   <div class="main">
     <div class="top">
@@ -967,7 +967,7 @@ function blank(){
 function load(){try{["v2","v3","v4","v5"].forEach(k=>localStorage.removeItem("mantia-demo-"+k))}catch(e){}
   try{const j=localStorage.getItem(KEY);if(j){const o=JSON.parse(j);if(o&&o.tickets&&o.users&&o.puntos&&o.hvTpl&&"db" in o){if(!o.form)o.form=formDef();(o.puntos||[]).forEach(p=>{["n","pr","cc","zona","sub","op","ger","ges","asi","tipo","c","sis","mon","cl","obs","dir"].forEach(f=>{if(typeof p[f]==="string")p[f]=p[f].toLocaleUpperCase("es-CO")});if(p.ex)for(const k in p.ex)if(typeof p.ex[k]==="string")p.ex[k]=p.ex[k].toLocaleUpperCase("es-CO")});return o}}}catch(e){}return /[?&]demo/.test(location.search)?seed():blank()}
 /* ---------- Acceso: usuario y contraseña ---------- */
-const HVL=new Set();let MEMS=null,FD=null,FAILS=0,LOCK=0;
+const VERSION="7.6";const HVL=new Set();let MEMS=null,FD=null,FAILS=0,LOCK=0;
 const sget=()=>{try{return sessionStorage.getItem("mantia-s")||MEMS}catch(e){return MEMS}};
 const sset=v=>{MEMS=v;try{v?sessionStorage.setItem("mantia-s",v):sessionStorage.removeItem("mantia-s")}catch(e){}};
 async function hashPw(pw,salt){
@@ -1357,25 +1357,37 @@ function vCform(){
 }
 
 /* ---------- Puntos ---------- */
+const DEPTOS=["AMAZONAS","ANTIOQUIA","ARAUCA","ATLÁNTICO","BOGOTÁ D.C.","BOLÍVAR","BOYACÁ","CALDAS","CAQUETÁ","CASANARE","CAUCA","CESAR","CHOCÓ","CÓRDOBA","CUNDINAMARCA","GUAINÍA","GUAVIARE","HUILA","LA GUAJIRA","MAGDALENA","META","NARIÑO","NORTE DE SANTANDER","PUTUMAYO","QUINDÍO","RISARALDA","SAN ANDRÉS Y PROVIDENCIA","SANTANDER","SUCRE","TOLIMA","VALLE DEL CAUCA","VAUPÉS","VICHADA"];
+const DEP_DE={"BOGOTÁ":"BOGOTÁ D.C.","BOGOTA":"BOGOTÁ D.C.","MEDELLÍN":"ANTIOQUIA","CALI":"VALLE DEL CAUCA","BARRANQUILLA":"ATLÁNTICO","CARTAGENA":"BOLÍVAR","BUCARAMANGA":"SANTANDER","CÚCUTA":"NORTE DE SANTANDER","PEREIRA":"RISARALDA","MANIZALES":"CALDAS","SANTA MARTA":"MAGDALENA","IBAGUÉ":"TOLIMA","VILLAVICENCIO":"META","SOACHA":"CUNDINAMARCA","CHÍA":"CUNDINAMARCA","GIRARDOT":"CUNDINAMARCA"};
 function modalUbicar(p){
+  const ciu0=p.ciuU||p.c||"",dep0=p.dep||DEP_DE[String(p.c||"").toUpperCase()]||"";
   formModal("Ubicación de "+p.n,
-   `<div class="field"><label for="pd">Dirección</label><input id="pd" class="inp" value="${esc(p.dir||"")}" placeholder="Ej.: Calle 72 # 10-34"></div>
+   `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+     <div class="field"><label for="pp">País *</label><input id="pp" class="inp" value="${esc(p.pais||"COLOMBIA")}" autocomplete="off"></div>
+     <div class="field"><label for="pe">Departamento *</label><input id="pe" class="inp" list="dld" value="${esc(dep0)}" placeholder="Ej.: BOGOTÁ D.C." autocomplete="off"><datalist id="dld">${DEPTOS.map(d=>`<option value="${d}">`).join("")}</datalist></div>
+     <div class="field"><label for="pc">Ciudad *</label><input id="pc" class="inp" value="${esc(ciu0)}" autocomplete="off"></div></div>
+    <div class="field"><label for="pd">Dirección *</label><input id="pd" class="inp" value="${esc(p.dir||"")}" placeholder="Ej.: Calle 72 # 10-34" autocomplete="off"></div>
+    <div class="tools"><button type="button" class="btn sm" id="geo">Buscar la dirección en el mapa</button><button type="button" class="btn sm" id="pick">Elegir en el mapa</button></div>
+    <span class="hint" id="geomsg">Con país, departamento, ciudad y dirección la búsqueda es precisa. La ubicación se guarda aparte y se conserva en cada nueva carga de la base.</span>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
      <div class="field"><label for="pla">Latitud</label><input id="pla" class="inp" inputmode="decimal" value="${hasLoc(p)?p.lat:""}" placeholder="4.6597"></div>
-     <div class="field"><label for="plo">Longitud</label><input id="plo" class="inp" inputmode="decimal" value="${hasLoc(p)?p.lng:""}" placeholder="-74.0600"></div></div>
-    <div class="tools"><button type="button" class="btn sm" id="geo">Buscar la dirección</button><button type="button" class="btn sm" id="pick">Elegir en el mapa</button></div><span class="hint" id="geomsg">La ubicación no viene en la base mensual; se guarda aparte y se conserva en cada nueva carga.</span>`,
+     <div class="field"><label for="plo">Longitud</label><input id="plo" class="inp" inputmode="decimal" value="${hasLoc(p)?p.lng:""}" placeholder="-74.0600"></div></div>`,
    "Guardar ubicación",()=>{
-    const la=$("#pla").value.trim(),lo=$("#plo").value.trim();let lat=null,lng=null;
+    const la=$("#pla").value.trim(),lo=$("#plo").value.trim(),pais=$("#pp").value.trim(),dep=$("#pe").value.trim(),ciu=$("#pc").value.trim(),dir=$("#pd").value.trim();let lat=null,lng=null;
+    if(dir&&(!pais||!dep||!ciu))return "Completa país, departamento y ciudad: una dirección sola puede ser de cualquier parte del mundo.";
     if(la||lo){lat=parseFloat(la.replace(",","."));lng=parseFloat(lo.replace(",","."));if(isNaN(lat)||isNaN(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return "La latitud y la longitud deben ser números válidos (ej.: 4.6597 y -74.0600)."}
-    p.dir=$("#pd").value.trim();p.lat=lat;p.lng=lng;logA(`guardó la ubicación de ${p.n}`);save();render();toast("Ubicación guardada")});
+    Object.assign(p,{pais,dep,ciuU:ciu,dir,lat,lng});logA(`guardó la ubicación de ${p.n}`);save();render();toast("Ubicación guardada")});
   $("#pick").onclick=()=>{closeModal();PLACE=p.id;S.view="mapa";render()};
-  $("#geo").onclick=async()=>{const q=[$("#pd").value.trim(),p.c].filter(Boolean).join(", "),m=$("#geomsg");
-    if(!$("#pd").value.trim()){m.textContent="Escribe la dirección.";return}
+  $("#geo").onclick=async()=>{const pais=$("#pp").value.trim(),dep=$("#pe").value.trim(),ciu=$("#pc").value.trim(),dir=$("#pd").value.trim(),m=$("#geomsg");
+    if(!pais||!dep||!ciu||!dir){m.textContent="Completa país, departamento, ciudad y dirección.";return}
     m.textContent="Buscando…";
-    try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(q)),j=await r.json();
-      if(j[0]){$("#pla").value=(+j[0].lat).toFixed(6);$("#plo").value=(+j[0].lon).toFixed(6);m.textContent="Ubicación encontrada. Revísala en el mapa."}
-      else m.textContent="No se encontró esa dirección. Escribe latitud y longitud o elígela en el mapa."}
-    catch(e){m.textContent="No se pudo consultar el buscador. Escribe latitud y longitud o elígela en el mapa."}};
+    const go=async u=>{const r=await fetch(u),j=await r.json();return j[0]};
+    try{const base="https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=es&";
+      let x=await go(base+"street="+encodeURIComponent(dir)+"&city="+encodeURIComponent(ciu)+"&state="+encodeURIComponent(dep)+"&country="+encodeURIComponent(pais));
+      if(!x)x=await go(base+"q="+encodeURIComponent([dir,ciu,dep,pais].join(", ")));
+      if(x){$("#pla").value=(+x.lat).toFixed(6);$("#plo").value=(+x.lon).toFixed(6);m.textContent="Encontrado: "+x.display_name+". Verifica que sea el lugar correcto y guarda."}
+      else m.textContent="No se encontró esa dirección. Prueba sin el «#» (por ejemplo «Calle 72 10 34»), o usa «Elegir en el mapa» o escribe latitud y longitud."}
+    catch(e){m.textContent="No se pudo consultar el buscador. Elige el punto en el mapa o escribe latitud y longitud."}};
 }
 function modalDetalle(p){
   const rows=FIELDS.filter(([k])=>p[k]!=null&&p[k]!=="").map(([k,l])=>`<div><div class="muted" style="font-size:12px">${l}</div><div>${esc(p[k])}</div></div>`).join("")+
@@ -1558,7 +1570,7 @@ function vMapa(){
     const mk={};
     con.forEach(p=>{const i=pinInfo(p);
       const k=L.marker([p.lat,p.lng],{draggable:adm,icon:L.divIcon({className:"",html:`<div class="pin ${i.cls}">${i.n}</div>`,iconSize:[30,30],iconAnchor:[15,15]}),title:p.n}).addTo(m);
-      k.bindPopup(`<b>${esc(p.n)}</b><br>${esc(p.zona?p.zona+" · ":"")}${esc(p.c)}${p.dir?"<br>"+esc(p.dir):""}<br>${i.n} ticket(s) abierto(s)<div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm" data-mt="${p.id}">Ver tickets</button>${lvl("hv")!=="ninguno"?`<button class="btn sm" data-mh="${p.id}">Hoja de vida</button>`:""}</div>`);
+      k.bindPopup(`<b>${esc(p.n)}</b><br>${esc(p.zona?p.zona+" · ":"")}${esc(p.c)}${p.dir?"<br>"+esc(p.dir):""}${p.dep?"<br>"+esc((p.ciuU||p.c)+", "+p.dep+(p.pais?", "+p.pais:"")):""}<br>${i.n} ticket(s) abierto(s)<div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm" data-mt="${p.id}">Ver tickets</button>${lvl("hv")!=="ninguno"?`<button class="btn sm" data-mh="${p.id}">Hoja de vida</button>`:""}</div>`);
       if(adm)k.on("dragend",()=>{const c=k.getLatLng();p.lat=+c.lat.toFixed(6);p.lng=+c.lng.toFixed(6);save();toast("Ubicación actualizada")});
       mk[p.id]=k});
     if(con.length)m.fitBounds(L.latLngBounds(con.map(p=>[p.lat,p.lng])),{padding:[40,40],maxZoom:15});else m.setView([4.65,-74.08],11);
@@ -1776,6 +1788,13 @@ function modalUser(u){
   const ir=$("#ir");if(ir)ir.onchange=e=>{const r=e.target.value;$("#ird").textContent=ROLE_DEF[r].d;const d=mods({rol:r});["hv","inv"].forEach(k=>{$("#m_"+k).value=d[k];$("#m_"+k).disabled=r==="Administrador"})};
 }
 if(location.hash==="#cargar-base")S.view="cargar";
+(function chkVer(){
+  if(!/^https?:/.test(location.protocol))return;
+  fetch(location.href.split("#")[0],{cache:"no-store"}).then(r=>r.text()).then(t=>{const m=t.match(/const VERSION="([^"]+)"/);if(!m||m[1]===VERSION)return;
+    const b=document.createElement("div");b.setAttribute("role","status");b.style.cssText="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:200;background:var(--fg);color:var(--bg);padding:10px 14px;border-radius:10px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow);font-size:14px";
+    b.innerHTML=`<span>Hay una versión nueva de Mantia (v${esc(m[1])}).</span><button class="btn sm" id="vupd">Actualizar</button>`;document.body.appendChild(b);
+    $("#vupd").onclick=()=>{location.replace(location.pathname+"?v="+Date.now())}}).catch(()=>{});
+})();
 (function boot(){
   if(S.demo){render();return}
   const u=S.users.find(x=>x.id===sget()&&x.ph&&x.est!=="Inactivo");
